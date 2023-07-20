@@ -26,3 +26,17 @@ grep -f tmp/8k_no_candidates.txt input/sinvicta.GO:MF.name.gmt > tmp/filtered_si
 cat tmp/filtered_sinvicta.GO:* > tmp/filtered_sinvicta.GO_ALL.txt
 sed 's/\s/,/g' tmp/filtered_sinvicta_GO_ALL.txt > tmp/filtered_sinvicta_GO_ALL.csv
 sed 's/,//g' tmp/filtered_sinvicta_GO_ALL.txt > results/2023_05_Universe.txt
+
+
+###
+9203  grep -f input/2023-06-19-Master_GENES.txt tmp/All_GO_uniq9k.txt > tmp/july_8k_no_candidates.txt
+ 9204  grep -f tmp/july_8k_no_candidates.txt input/sinvicta.GO:BP.name.gmt > tmp/filtered_sinvicta.GO:BP.name.gmt
+ 9205  grep -f tmp/july_8k_no_candidates.txt input/sinvicta.GO:CC.name.gmt > tmp/filtered_sinvicta.GO:CC.name.gmt
+ 9206  grep -f tmp/july_8k_no_candidates.txt input/sinvicta.GO:MF.name.gmt > tmp/filtered_sinvicta.GO:MF.name.gmt
+ 9207  cat tmp/filtered_sinvicta.GO:* > tmp/filtered_sinvicta.GO_ALL.txt
+ 9208  sed 's/\s/,/g' tmp/filtered_sinvicta_GO_ALL.txt > tmp/filtered_sinvicta_GO_ALL.csv
+ 9209  sed 's/,//g' tmp/filtered_sinvicta_GO_ALL.txt > results/2023_07_Universe.txt
+ 9210  head results/2023_05_Universe.gmt
+ 9211  head results/2023_07_Universe.txt
+ 9212  mv results/2023_07_Universe.txt results/2023_07_Universe.gmt
+
