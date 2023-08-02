@@ -9,7 +9,6 @@ grep -o "LOC[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" input/sinvicta.GO:MF.
 # Concatenate the results. This is a file with the LOC IDs present in the GMT dataset.
 cat tmp/GO_MF_uniq.txt tmp/GO_CC_uniq.txt tmp/GO_BP_uniq.txt | sort -u > tmp/All_GO_uniq9k.txt
 
-
 # Find our gene IDS present in the g:profiler GMT IDs.
 grep -f input/2023_07_20_No_candidates.txt tmp/All_GO_uniq9k.txt > tmp/8k_no_candidates.txt
 
@@ -26,3 +25,12 @@ cat tmp/filtered_sinvicta.GO:* > tmp/filtered_sinvicta.GO_ALL.txt
 sed 's/\s/,/g' tmp/july_20_no_candidates.txt > tmp/filtered_sinvicta_GO_ALL.csv
 sed 's/,//g' tmp/filtered_sinvicta_GO_ALL.txt > results/2023_07_Universe.gmt
 
+
+#### Create an universe that includes all the 12.5k genes from BLS
+# Find the genes that are in the GO but no in our data.
+grep -vf input/2023-07-06-Master_12k_Genes.txt tmp/All_GO_uniq9k.txt > tmp/genes_no_in_our_data.txt
+./delete_candidates_from_GO.sh tmp/genes_no_in_our_data.txt tmp/filtered_sinvicta.GO_ALL.txt tmp/only_ours_ranked.txt
+
+# Format the universe.
+sed 's/\s/,/g' tmp/only_ours_ranked.txt > tmp/only_ranked_GO_ALL.csv
+sed 's/,//g' tmp/only_ranked_GO_ALL.csv > results/2023_07_Ranked_Universe.gmt
