@@ -1,0 +1,174 @@
+Original file
+
+```{r}
+gt <- read.table("tmp/gt_every_10th", header = T)
+
+outgroup_gt <- gt[,ncol(gt)]
+ingroup_gt  <- gt[, -ncol(gt)]
+
+ingroup_gt <- as.matrix(ingroup_gt)
+stopifnot(ingroup_gt %in% c("0/0", "1/1", "./."))
+
+n_missing <- apply(ingroup_gt, 1, function(x) sum(x == "./."))
+
+stats_df <- data.frame(n_missing = n_missing)
+
+library(tidyverse)
+
+stats_df %>%
+  ggplot() + geom_histogram(aes(x = n_missing), binwidth = 1) +
+  theme_bw() +
+  xlab("Number of samples with a missing genotype per site") +
+  ylab("count") +
+  geom_vline(xintercept=10, colour = "purple") -> my_plot
+
+ggsave(my_plot, filename="results/n_missing_pre_filter.pdf", height = 4, width = 7)
+my_plot
+#It would be usful if the x-axis was in perentages of the toral samples (241)
+```
+```{r}
+# Number of missing sites per population
+bb_samples <- grep("bigB", colnames(ingroup_gt))
+lb_samples <- grep("littleb", colnames(ingroup_gt))
+stopifnot(length(bb_samples) + length(lb_samples) == length(colnames(ingroup_gt)))
+
+stats_df$n_missing_bb <- apply(ingroup_gt[,bb_samples], 1, function(x) sum(x == "./."))
+stats_df$n_missing_lb <- apply(ingroup_gt[,lb_samples], 1, function(x) sum(x == "./."))
+
+stats_df %>%
+  pivot_longer(!n_missing) %>%
+  ggplot() + geom_histogram(aes(x = value), binwidth = 1) +
+  facet_grid(vars(name)) +
+  theme_bw() +
+  xlab("Number of samples with a missing genotype per site") +
+  ylab("count") +
+  geom_vline(xintercept=10, colour = "red") -> my_plot
+
+ggsave(my_plot, filename="results/n_missing_per_pop_pre_filter.pdf", height = 6, width = 7)
+my_plot
+
+```
+
+```{r}
+# stats_df %>%
+#   ggplot() + geom_point(aes(x = n_missing_bb, y = n_missing_lb)) +
+#   theme_bw()
+
+## Minor allele count
+minor_allele_count <- function(row) {
+  row <- row[row != "./."]
+  stopifnot(length(row) > 0)
+  allele_count <- sum(row == "1/1")
+
+  if (allele_count > (length(row) / 2)) {
+    allele_count <- length(row) - allele_count
+  }
+  return(allele_count)
+}
+
+stats_df$minor_allele_count <-  apply(ingroup_gt, 1, minor_allele_count)
+
+stats_df %>%
+  ggplot() + geom_histogram(aes(x = minor_allele_count), binwidth = 1) +
+  theme_bw() +
+  xlab("Minor allele count (S. invicta only)") +
+  ylab("") -> my_plot
+
+ggsave(my_plot, filename="results/minor_allele_count.pdf", height = 4, width = 7)
+
+sum(stats_df$minor_allele_count == 0)
+# 40443
+sum(stats_df$minor_allele_count == 1)
+# 12175
+sum(stats_df$minor_allele_count == 2)
+# 4323
+sum(stats_df$minor_allele_count > 2)
+# 9401
+```
+
+# Filtered at 10
+```{r}
+gt <- read.table("tmp/gt_every_10th_filtered_10", header = T)
+
+outgroup_gt <- gt[,ncol(gt)]
+ingroup_gt  <- gt[, -ncol(gt)]
+
+ingroup_gt <- as.matrix(ingroup_gt)
+stopifnot(ingroup_gt %in% c("0/0", "1/1", "./."))
+
+n_missing <- apply(ingroup_gt, 1, function(x) sum(x == "./."))
+
+stats_df <- data.frame(n_missing = n_missing)
+
+library(tidyverse)
+
+stats_df %>%
+  ggplot() + geom_histogram(aes(x = n_missing), binwidth = 1) +
+  theme_bw() +
+  xlab("Number of samples with a missing genotype per site") +
+  ylab("count") -> my_plot
+ # geom_vline(xintercept=12, colour = "red") 
+
+ggsave(my_plot, filename="results/n_missing_pre_filter.pdf", height = 4, width = 7)
+my_plot
+#It would be usful if the x-axis was in perentages of the toral samples (241)
+```
+```{r}
+# Number of missing sites per population
+bb_samples <- grep("bigB", colnames(ingroup_gt))
+lb_samples <- grep("littleb", colnames(ingroup_gt))
+stopifnot(length(bb_samples) + length(lb_samples) == length(colnames(ingroup_gt)))
+
+stats_df$n_missing_bb <- apply(ingroup_gt[,bb_samples], 1, function(x) sum(x == "./."))
+stats_df$n_missing_lb <- apply(ingroup_gt[,lb_samples], 1, function(x) sum(x == "./."))
+
+stats_df %>%
+  pivot_longer(!n_missing) %>%
+  ggplot() + geom_histogram(aes(x = value), binwidth = 1) +
+  facet_grid(vars(name)) +
+  theme_bw() +
+  xlab("Number of samples with a missing genotype per site") +
+  ylab("count") -> my_plot
+  #geom_vline(xintercept=12, colour = "red") 
+
+ggsave(my_plot, filename="results/n_missing_per_pop_pre_filter.pdf", height = 6, width = 7)
+my_plot
+
+```
+
+```{r}
+# stats_df %>%
+#   ggplot() + geom_point(aes(x = n_missing_bb, y = n_missing_lb)) +
+#   theme_bw()
+
+## Minor allele count
+minor_allele_count <- function(row) {
+  row <- row[row != "./."]
+  stopifnot(length(row) > 0)
+  allele_count <- sum(row == "1/1")
+
+  if (allele_count > (length(row) / 2)) {
+    allele_count <- length(row) - allele_count
+  }
+  return(allele_count)
+}
+
+stats_df$minor_allele_count <-  apply(ingroup_gt, 1, minor_allele_count)
+
+stats_df %>%
+  ggplot() + geom_histogram(aes(x = minor_allele_count), binwidth = 1) +
+  theme_bw() +
+  xlab("Minor allele count (S. invicta only)") +
+  ylab("") -> my_plot
+
+ggsave(my_plot, filename="results/minor_allele_count.pdf", height = 4, width = 7)
+my_plot
+sum(stats_df$minor_allele_count == 0)
+# 40443
+sum(stats_df$minor_allele_count == 1)
+# 12175
+sum(stats_df$minor_allele_count == 2)
+# 4323
+sum(stats_df$minor_allele_count > 2)
+# 9401
+```

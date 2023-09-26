@@ -1,0 +1,33 @@
+# VCF filtering
+# Input 
+ln -s /data/archive/archive-SBCS-WurmLab/flopezosorio/2021_popgen_invicta_richteri/results/03_call_variants/2022-03-14-filtered_variants/2022-02-16-solenopsis_all_369samples.norm.maskfilter.biallelicsnps.DP1.GQ20.vcf.gz input/.
+
+tabix -p vcf 2022-02-16-solenopsis_all_369samples.norm.maskfilter.biallelicsnps.DP1.GQ20.vcf.gz
+
+#Check names on vcf :
+bcftools query --list-samples input/2022-02-16-solenopsis_all_369samples.norm.maskfilter.biallelicsnps.DP1.GQ20.vcf.gz | sort | uniq > input/samples_in_vcf_sorted 
+
+# Filter to keep S. invicta only:
+qsub qsub_vcftools_filter.sh
+
+# Check for missingness with Pracana's mewthod:
+
+bcftools query -H -f "[%GT\t]\n" tmp/2022-03-15-Only_241_Inv.vcf.gz > tmp/gt &
+
+module load ruby
+awk 'NR%10==1' tmp/gt \
+  | ruby -pe 'gsub(/\# /, "")' > tmp/gt_every_10th
+head -n 1 tmp/gt_every_10th
+
+# Then folowed the r script
+check_missingness.Rmd
+
+# Filter the VCF based on the values from the above Rmd script and fix the ploidy 
+qsub combine_commands_qsub.sh
+
+
+
+
+
+
+
