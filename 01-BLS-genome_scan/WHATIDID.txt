@@ -1,4 +1,4 @@
-# VCF filtering
+### VCF filtering
 # Input 
 ln -s /data/archive/archive-SBCS-WurmLab/flopezosorio/2021_popgen_invicta_richteri/results/03_call_variants/2022-03-14-filtered_variants/2022-02-16-solenopsis_all_369samples.norm.maskfilter.biallelicsnps.DP1.GQ20.vcf.gz input/.
 
@@ -33,7 +33,8 @@ qsub combine_commands_qsub.sh
 # The resulting VCF was the input for all downstream analysis.
 
 
+### Ballermix+ scan 
+./Run_Ballermix.sh
 
-
-
+### NCD1 scan
 
