@@ -49,5 +49,9 @@ system.time(sep.run.ncd1<-foreach(x=1:15, .combine="rbind", .packages=c("data.ta
 write.table(sep.run.ncd1, file='results/NCD1_win5Kb_step2500b.txt', quote = FALSE, row.names = FALSE, sep = "\t")
 
 
+### Combine the results from the scans
+./06-Combine_NCD_Ballermix_results.sh
+
+
 
 
