@@ -22,9 +22,15 @@ head -n 1 tmp/gt_every_10th
 # Then folowed the r script
 check_missingness.Rmd
 
-# Filter the VCF based on the values from the above Rmd script and fix the ploidy 
+#Will do 10 (roddy advice) and also 25% (60 samples) Federico advice: 
+#We choose 10 as the maximun of allowed samples missing per site.
+
+# Filter the VCF based on the values from the above Rmd script, 
+# eliminate unvariable sites, and fix the ploidy: 
+
 qsub combine_commands_qsub.sh
 
+# The resulting VCF was the input for all downstream analysis.
 
 
 
