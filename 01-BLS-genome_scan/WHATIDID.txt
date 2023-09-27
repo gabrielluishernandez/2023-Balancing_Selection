@@ -4,14 +4,10 @@ ln -s /data/archive/archive-SBCS-WurmLab/flopezosorio/2021_popgen_invicta_richte
 
 tabix -p vcf 2022-02-16-solenopsis_all_369samples.norm.maskfilter.biallelicsnps.DP1.GQ20.vcf.gz
 
-#Check names on vcf :
-bcftools query --list-samples input/2022-02-16-solenopsis_all_369samples.norm.maskfilter.biallelicsnps.DP1.GQ20.vcf.gz | sort | uniq > input/samples_in_vcf_sorted 
-
 # Filter to keep S. invicta only:
-qsub qsub_vcftools_filter.sh
+qsub 01-Get_raw_VCF_for_QC.sh
 
 # Check for missingness with Pracana's mewthod:
-
 bcftools query -H -f "[%GT\t]\n" tmp/2022-03-15-Only_241_Inv.vcf.gz > tmp/gt &
 
 module load ruby
@@ -20,21 +16,38 @@ awk 'NR%10==1' tmp/gt \
 head -n 1 tmp/gt_every_10th
 
 # Then folowed the r script
-check_missingness.Rmd
+02-Check_VCF_missingness.Rmd
 
 #Will do 10 (roddy advice) and also 25% (60 samples) Federico advice: 
 #We choose 10 as the maximun of allowed samples missing per site.
 
 # Filter the VCF based on the values from the above Rmd script, 
 # eliminate unvariable sites, and fix the ploidy: 
-
-qsub combine_commands_qsub.sh
+qsub 03-Filter_VCF.sh
 
 # The resulting VCF was the input for all downstream analysis.
 
-
 ### Ballermix+ scan 
-./Run_Ballermix.sh
+./04-Ballermix_Run.sh
 
 ### NCD1 scan
+# Get software 
+git clone https://github.com/bbitarello/NCD-statistics.git
+
+# Prepare input file
+module load bcftools/
+bcftools query -f '%CHROM\t%POS\t%CHROM|%POS\t%REF\t%ALT\t%AF\n' input/input.vcf.gz > tmp/Table_for_ncd_input.txt
+
+# Formating input
+prepare_input_for_ncd.Rmd
+
+module load R/
+source('NCD-statistics/scripts/preamble.R')
+source('NCD-statistics/scripts/NCD_func.R')
+readRDS('tmp/NCD_input.rds')-> SNP_input 
+system.time(sep.run.ncd1<-foreach(x=1:15, .combine="rbind", .packages=c("data.table")) %dopar% NCD1(X=SNP_input[[x]], W=5000, S=2500));
+write.table(sep.run.ncd1, file='results/NCD1_win5Kb_step2500b.txt', quote = FALSE, row.names = FALSE, sep = "\t")
+
+
+
 

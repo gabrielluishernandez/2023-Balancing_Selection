@@ -1,0 +1,49 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+libraries <- c("tidyverse", "data.table")
+for (lib in libraries) {
+  if (require(package = lib, character.only = TRUE)) {
+    print("Successful")
+  } else {
+    print("Installing")
+    if (!requireNamespace("BiocManager", quietly = TRUE)) {
+      install.packages("BiocManager")
+    }
+    BiocManager::install(lib)
+    library(lib, character.only = TRUE)
+  }
+}
+
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+# Load input
+
+all_chrs <- read_table("tmp/Table_for_ncd_input.txt", 
+                       col_names = c("CHR","POS", "ID","REF","ALT","AF2"))
+
+all_chrs$AF1 <- (1 - all_chrs$AF2)
+all_chrs$MAF <- pmin(all_chrs$AF1,all_chrs$AF2)
+
+all_chrs_ncd_format <- data.table(CHR = all_chrs$CHR, POS = all_chrs$POS,
+                                  ID = all_chrs$ID, REF = all_chrs$REF, 
+                                  ALT = all_chrs$ALT, AF1 = all_chrs$AF1,
+                                  AF2 = all_chrs$AF2, MAF = all_chrs$MAF
+                                  )
+
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+# Loop through each chromosome
+vect_chr <- unique(all_chrs$CHR)
+
+ncd_input_list <- list()
+
+for (chr in vect_chr) {
+  chr_ncd_format     <- all_chrs_ncd_format[all_chrs_ncd_format$CHR == chr,]
+  ncd_input_list[[chr]] <- chr_ncd_format
+}
+
+saveRDS(ncd_input_list, file = "tmp/NCD_input.rds")
+
+```
+
