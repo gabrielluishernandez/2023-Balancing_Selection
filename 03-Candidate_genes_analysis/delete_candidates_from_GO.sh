@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#Delete some genes from the big set
+
 # Check if all three filenames are provided as arguments
 if [ $# -ne 3 ]; then
     echo "Usage: $0 <fileA> <fileB> <output_file>"
