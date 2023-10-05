@@ -118,16 +118,18 @@ nrow(subset(bias_and_all, candens == "1"))
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-#%>% subset(gene != "LOC105199771")
-ggplot(bias_and_all %>% arrange(desc(density)), aes(clr, 1-ncd05)) + 
-  geom_point(aes(colour = density, shape = candens),
-             alpha = 0.7, size = 5) +
+
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% 
+  arrange(desc(density)), aes(clr, 1-ncd05)) + 
+  geom_point(aes(colour = density, shape = candens), alpha = 0.7, size = 5) +
   scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
   geom_density_2d(bins = 525, alpha = 0.3, color = "black") +
   labs(shape = "Candidates") + xlab("Ballermix") + ylab("NCD1") + 
   scale_shape_manual(values = c(20, 18),
                      labels = c("No-BLS", "BLS")) +
   theme_minimal()
+
 
 ```
 
