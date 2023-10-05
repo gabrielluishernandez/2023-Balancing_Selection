@@ -119,12 +119,12 @@ nrow(subset(bias_and_all, candens == "1"))
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 #%>% subset(gene != "LOC105199771")
-ggplot(bias_and_all %>% arrange(desc(density)), aes(clr, ncd05)) + 
+ggplot(bias_and_all %>% arrange(desc(density)), aes(clr, 1-ncd05)) + 
   geom_point(aes(colour = density, shape = candens),
              alpha = 0.7, size = 5) +
   scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
   geom_density_2d(bins = 525, alpha = 0.3, color = "black") +
-  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  labs(shape = "Candidates") + xlab("Ballermix") + ylab("NCD1") + 
   scale_shape_manual(values = c(20, 18),
                      labels = c("No-BLS", "BLS")) +
   theme_minimal()
@@ -136,26 +136,20 @@ ggplot(bias_and_all %>% arrange(desc(density)), aes(clr, ncd05)) +
 
 bias_and_all <- arrange(bias_and_all, density)
 
+### Complete table
 write.table(bias_and_all, 
-            "results/Ranked_by_density.txt", 
-            quote = FALSE, 
+            "~/apocrita/gitstuff/2023-Balancing_Selection/02-Candidate_genes_selection/results/2023-Master_table.txt", 
+            quote = FALSE,
             col.names = TRUE, 
             row.names = FALSE)
 
-write.table(bias_and_all$gene, 
-            "results/Genes.txt", 
-            quote = FALSE, 
-            col.names = FALSE, 
-            row.names = FALSE)
 
-candidates_pop4 <- subset(bias_and_all, candens == "1")
+# Candidates only
+candidate_dens <- subset(bias_and_all, candens == "1")
 
-write.table(candidates_pop4$gene, 
-            "results/Candidate_Genes.txt", 
-            quote = FALSE, 
-            col.names = FALSE, 
-            row.names = FALSE)
+write.table(candidate_dens, 
+            "~/apocrita/gitstuff/2023-Balancing_Selection/02-Candidate_genes_selection/results/2023-Candidate_genes_only.txt", 
+            quote = FALSE,
+            col.names = TRUE, row.names = FALSE)
 
 ```
-
-
