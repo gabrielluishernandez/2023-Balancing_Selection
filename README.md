@@ -1,5 +1,5 @@
 # Balancing Selection in the Red Fire Ant: A Genome-Wide Presence with Particularly Strong Signals in Nervous System Genes
-Gabriel-Luis Hernandez, Richard Nichols, Federico Lopez, Rodrigo Pracana & Yannick Wurm
+Gabriel-Luis Hernández, Richard A. Nichols, Federico López-Osorio, Rodrigo Pracana & Yannick Wurm
 
 # Introduction
 We conducted a genome-wide assessment of balancing selection (BLS) in the red fire ant, </i>Solenopsis invicta</i>. 
