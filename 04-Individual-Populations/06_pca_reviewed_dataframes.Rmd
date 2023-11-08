@@ -1,0 +1,245 @@
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Load data, rename and merge the populations in a single data frame
+
+pop1_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-1.txt', 
+                         header = TRUE)
+pop1_genes <- pop1_genes[, c("gene", "clr", "ncd05")]
+names(pop1_genes) <- c("gene", "clr_pop1", "ncd05_pop1")
+
+pop2_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-2.txt', 
+                         header = TRUE)
+pop2_genes <- pop2_genes[, c("gene", "clr", "ncd05")]
+names(pop2_genes) <- c("gene", "clr_pop2", "ncd05_pop2")
+
+pop3_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-3.txt', 
+                         header = TRUE)
+pop3_genes <- pop3_genes[, c("gene", "clr", "ncd05")]
+names(pop3_genes) <- c("gene", "clr_pop3", "ncd05_pop3")
+
+pop4_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-4.txt', 
+                         header = TRUE)
+pop4_genes <- pop4_genes[, c("gene", "clr", "ncd05")]
+names(pop4_genes) <- c("gene", "clr_pop4", "ncd05_pop4")
+
+merged_pops <- merge(
+  merge(
+    merge(
+      pop1_genes, pop2_genes, by = "gene"), 
+    pop3_genes, by = "gene"), 
+  pop4_genes, by = "gene"
+  )
+
+
+# Merge all data frames with NAs
+merged_pops <- merge(merge(merge(pop1_genes, pop2_genes, by = "gene", all = TRUE), 
+                            pop3_genes, by = "gene", all = TRUE),
+                     pop4_genes, by = "gene", all = TRUE)
+```
+
+Head of input file to be standardized and then used in prcomp
+
+# Remove NAs by na.omit(merged_pops)
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+head(merged_pops)
+
+#Get rid of NAs
+complete_data <- as.data.frame(na.omit(merged_pops))
+gene_names <- complete_data$gene
+
+#Standardize data 
+standardized_data <- scale(complete_data[, -1])
+
+
+# Perform PCA
+pca_result <- prcomp(standardized_data, center = TRUE, scale. = TRUE)
+
+# Create a data frame with PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+#colnames(pca_scores) <- c("PC1", "PC2")  # Rename columns
+```
+
+Explained variance 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+explained_variance <- (pca_result$sdev^2) / sum(pca_result$sdev^2)
+explained_variance
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Add gene names back
+pca_results_with_names <- data.frame(
+  gene = gene_names,
+  PC1 = pca_scores$PC1,
+  PC2 = pca_scores$PC2,
+  PC3 = pca_scores$PC3,
+  PC4 = pca_scores$PC4,
+  PC5 = pca_scores$PC5,
+  PC6 = pca_scores$PC6,
+  PC7 = pca_scores$PC7,
+  PC8 = pca_scores$PC8
+)
+
+#get the master table
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                             header = TRUE) 
+
+
+bias_and_all <- merge(bias_and_all, pca_results_with_names, by = "gene")
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop)
+bias_and_all$pop1 <- as.factor(bias_and_all$pop1)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% arrange(candens), 
+       aes(x = PC1, y = PC2, colour = candens, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "Genes in top 1%",
+                         labels = c("No","Yes")) +
+  guides(shape = FALSE)+
+  theme_minimal()
+
+```
+
+
+#################333
+
+### Impute NAs
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Load data, rename and merge the populations in a single data frame
+
+pop1_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-1.txt', 
+                         header = TRUE)
+pop1_genes <- pop1_genes[, c("gene", "clr", "ncd05")]
+names(pop1_genes) <- c("gene", "clr_pop1", "ncd05_pop1")
+
+pop2_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-2.txt', 
+                         header = TRUE)
+pop2_genes <- pop2_genes[, c("gene", "clr", "ncd05")]
+names(pop2_genes) <- c("gene", "clr_pop2", "ncd05_pop2")
+
+pop3_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-3.txt', 
+                         header = TRUE)
+pop3_genes <- pop3_genes[, c("gene", "clr", "ncd05")]
+names(pop3_genes) <- c("gene", "clr_pop3", "ncd05_pop3")
+
+pop4_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-4.txt', 
+                         header = TRUE)
+pop4_genes <- pop4_genes[, c("gene", "clr", "ncd05")]
+names(pop4_genes) <- c("gene", "clr_pop4", "ncd05_pop4")
+
+merged_pops <- merge(
+  merge(
+    merge(
+      pop1_genes, pop2_genes, by = "gene"), 
+    pop3_genes, by = "gene"), 
+  pop4_genes, by = "gene"
+  )
+
+
+# Merge all data frames with NAs
+merged_pops <- merge(merge(merge(pop1_genes, pop2_genes, by = "gene", all = TRUE), 
+                            pop3_genes, by = "gene", all = TRUE),
+                     pop4_genes, by = "gene", all = TRUE)
+```
+
+Head of input file to be standardized and then used in prcomp
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#install.packages("missForest")
+library(missForest)
+
+
+##Impute NAs  (takes time)
+#The line bellow is commented out because it takes like 5 mins to run
+
+imputed_data <- missForest(merged_pops[, -1])
+gene_names <- merged_pops$gene
+
+
+head(merged_pops)
+
+#Get rid of NAs
+complete_data <- as.data.frame(na.omit(merged_pops))
+gene_names <- complete_data$gene
+
+#Standardize data 
+imputed_matrix <- imputed_data$ximp
+standardized_data <- scale(imputed_matrix)
+
+
+# Perform PCA
+pca_result <- prcomp(standardized_data, center = TRUE, scale. = TRUE)
+
+# Create a data frame with PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+#colnames(pca_scores) <- c("PC1", "PC2")  # Rename columns
+```
+
+Explained variance 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+explained_variance <- (pca_result$sdev^2) / sum(pca_result$sdev^2)
+explained_variance
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Add gene names back
+pca_results_with_names <- data.frame(
+  gene = gene_names,
+  PC1 = pca_scores$PC1,
+  PC2 = pca_scores$PC2,
+  PC3 = pca_scores$PC3,
+  PC4 = pca_scores$PC4,
+  PC5 = pca_scores$PC5,
+  PC6 = pca_scores$PC6,
+  PC7 = pca_scores$PC7,
+  PC8 = pca_scores$PC8
+)
+
+#get the master table
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                             header = TRUE) 
+
+
+bias_and_all <- merge(bias_and_all, pca_results_with_names, by = "gene")
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop)
+bias_and_all$pop1 <- as.factor(bias_and_all$pop1)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% arrange(candens), 
+       aes(x = PC1, y = PC2, colour = candens, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "Genes in top 1%",
+                         labels = c("No","Yes")) +
+  guides(shape = FALSE)+
+  theme_minimal()
+
+```
+
+

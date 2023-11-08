@@ -1,0 +1,172 @@
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+library(MASS)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+bias_and_all <- read.table('results/Genes_Scored.txt',header = FALSE, quote = "", 
+                         col.names = c("gene", "chr", "snp", "clr", "start",
+                                       "end", "ncd05", "ncd04", "ncd03"))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Organize by clr
+bias_and_all <- bias_and_all[order(bias_and_all$clr, decreasing = TRUE), ]
+
+#eliminate duplicates keeping the entry with the highest clr per gene.
+bias_and_all <- bias_and_all[!duplicated(bias_and_all$gene), ]
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+bias_and_all$facet = factor(bias_and_all$chr, 
+                         levels = c("CM031901.1", "CM031902.1", "CM031903.1", 
+                                    "CM031904.1", "CM031905.1", "CM031906.1", 
+                                    "CM031907.1", "CM031908.1", "CM031909.1", 
+                                    "CM031910.1", "CM031911.1", "CM031912.1", 
+                                    "CM031913.1", "CM031914.1", "CM031915.1"
+                                    ))
+
+```
+
+# Density-base selection
+
+#####################
+
+# 2. Using MASS to calculate density
+I like the fact that it adds the density values to the data frame.
+https://slowkow.com/notes/ggplot2-color-by-density/
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(MASS)
+library(ggplot2)
+library(viridis)
+
+
+#> Loading required package: viridisLite
+theme_set(theme_bw(base_size = 16))
+
+# Get density of points in 2 dimensions.
+# @param x A numeric vector.
+# @param y A numeric vector.
+# @param n Create a square n by n grid to compute density.
+# @return The density within each square.
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+
+set.seed(1)
+
+
+sd_clr <- sd(bias_and_all$clr)
+sd_ncd <- sd(bias_and_all$ncd05)
+
+
+bias_and_all$density <- get_density(bias_and_all$clr/sd_clr, 
+                                    bias_and_all$ncd05/sd_ncd, 
+                                    h = c(10, 10), n = 500)
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#%>% arrange(desc(density))
+ggplot(bias_and_all  ,
+       aes(clr, ncd05)) + 
+  geom_point(aes(colour = density), alpha = 0.7, size = 5, shape =18) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  #geom_density_2d(bins = 550, alpha = 0.3, color = "black") +
+  xlab("B0-MAF") + ylab("NCD") + 
+  theme_minimal()
+
+```
+### Candidate genes
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Select the top 1%
+
+quantile(bias_and_all$density, 0.01)
+
+bias_and_all$candens <- "0"
+
+for(i in 1:nrow(bias_and_all)) {                     
+  if(is.na(bias_and_all$clr[i])){
+    next
+  }
+  if(bias_and_all$density[i] <= 0.004233183){
+    bias_and_all$candens[i]  <- "1"
+  }
+  # if(bias_and_all$density[i] <= 0.0015){
+  #   bias_and_all$candens[i]  <- "2"
+  # }
+  # if(bias_and_all$clr[i] >= 16.11603 & bias_and_all$ncd05[i] <= 0.4647506){
+  #   bias_and_all$candens[i]  <- "1"
+  # }
+}
+
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+
+#Organize by clr
+bias_and_all <- bias_and_all[order(bias_and_all$density, decreasing = FALSE), ]
+
+#eliminate duplicates keeping the entry with the highest clr per gene.
+bias_and_all <- bias_and_all[!duplicated(bias_and_all$gene), ]
+
+nrow(subset(bias_and_all, candens == "1"))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#%>% subset(gene != "LOC105199771")
+ggplot(bias_and_all %>% 
+  arrange(desc(density)), aes(clr, ncd05)) + 
+  geom_point(aes(colour = density, shape = candens), alpha = 0.7, size = 5) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  geom_density_2d(bins = 525, alpha = 0.3, color = "black") +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(20, 18),
+                     labels = c("No-BLS", "BLS")) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+bias_and_all <- arrange(bias_and_all, density)
+
+write.table(bias_and_all, 
+            "results/2023-08-04-ranked_by_dens-POP-1.txt", 
+            quote = FALSE, 
+            col.names = TRUE, 
+            row.names = FALSE)
+
+write.table(bias_and_all$gene, 
+            "results/2023-08-04-POP-1-Genes.txt", 
+            quote = FALSE, 
+            col.names = FALSE, 
+            row.names = FALSE)
+
+candidates_pop4 <- subset(bias_and_all, candens == "1")
+
+write.table(candidates_pop4$gene, 
+            "results/2023-08-04-POP-1-Candidate_Genes.txt", 
+            quote = FALSE, 
+            col.names = FALSE, 
+            row.names = FALSE)
+
+```
+
+

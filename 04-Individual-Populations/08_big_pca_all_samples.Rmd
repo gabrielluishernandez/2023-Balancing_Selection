@@ -1,0 +1,605 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+```
+
+MASS
+Do a linear descriminat analysis
+ors, immune, other, (groups)
+cv =TRUE
+
+# Remove "density" from PCA
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#get the master table
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                             header = TRUE) 
+
+#bias_and_all <- merge(bias_and_all, pca_results_with_names, by = "gene")
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop)
+
+# Remove columns by indexing
+columns_to_remove <- c("snp",
+                       "chr", 
+                       "facet",
+                       "start", 
+                       "end",
+                       "drosophila",
+                       "pop1",
+                       "pop2",
+                       "pop3", 
+                       "pop4",
+                       "candens",
+                       "immune_new", 
+                       "immune", 
+                       "hymenop",
+                       "ors", 
+                       "ASE"
+                       )
+bias_and_all <- bias_and_all[, -which(names(bias_and_all) %in% columns_to_remove)]
+
+
+
+#bias_and_all$immune <- as.numeric(bias_and_all$immune)
+#bias_and_all$candens <- as.numeric(bias_and_all$candens)
+#bias_and_all$hymenop <- as.numeric(bias_and_all$hymenop)
+#bias_and_all$immune_new <- as.numeric(bias_and_all$immune_new)
+
+```
+
+
+
+Head of input file to be standardized and then used in prcomp
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+names(bias_and_all)
+#Standardize data 
+
+gene_names <- bias_and_all$gene
+standardized_data <- scale(bias_and_all[, -1])
+#str(bias_and_all)
+
+# Perform PCA
+pca_result <- prcomp(standardized_data, center = TRUE, scale. = TRUE)
+
+# Create a data frame with PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+#colnames(pca_scores) <- c("PC1", "PC2")  # Rename columns
+```
+
+Explained variance 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+explained_variance <- (pca_result$sdev^2) / sum(pca_result$sdev^2)
+explained_variance
+
+# Calculate cumulative explained variance
+cumulative_variance <- cumsum(pca_result$sdev^2) / sum(pca_result$sdev^2)
+cumulative_variance
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a scree plot
+scree_data <- data.frame(
+  PC = 1:length(pca_result$sdev),
+  Cumulative_Variance = cumulative_variance
+)
+
+ggplot(scree_data, aes(x = PC, y = Cumulative_Variance)) +
+geom_line() +
+geom_point() +
+labs(x = "Number of Principal Components", y = "Cumulative Explained Variance") +
+ggtitle("Scree Plot: Cumulative Explained Variance") +
+theme_minimal()
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Add gene names back
+pca_results_with_names <- data.frame(
+  gene = gene_names,
+  PC1 = pca_scores$PC1,
+  PC2 = pca_scores$PC2,
+  PC3 = pca_scores$PC3,
+  PC4 = pca_scores$PC4
+)
+
+#get the master table
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                             header = TRUE) 
+bias_and_all$facet2 <- "Other"
+
+for(i in 1:nrow(bias_and_all)) {                     
+  if(is.na(bias_and_all$chr[i])){
+    next
+  }
+  if(bias_and_all$immune_new[i] == "1"){
+    bias_and_all$facet2[i]  <- "Immune"
+  }
+  if(bias_and_all$ors[i] == "1"){
+    bias_and_all$facet2[i]  <- "ORs"
+  }
+  if(bias_and_all$hymenop[i] == "1"){
+    bias_and_all$facet2[i]  <- "BUSCO"
+  }
+  if(bias_and_all$immune_new[i] == "1" & bias_and_all$hymenop[i] == "1"){
+    bias_and_all$facet2[i]  <- "Immune and BUSCO"
+  }
+  if(bias_and_all$ors[i] == "1" & bias_and_all$hymenop[i] == "1"){
+    bias_and_all$facet2[i]  <- "ORS and BUSCO"
+  }
+}
+
+bias_and_all <- merge(bias_and_all, pca_results_with_names, by = "gene")
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop)
+bias_and_all$chr <- as.factor(bias_and_all$chr)
+bias_and_all$immune_new <- as.factor(bias_and_all$immune_new)
+bias_and_all$ors <- as.factor(bias_and_all$ors)
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_candidates_single <- ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(candens), 
+       aes(x = PC1, y = PC2, colour = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1) +
+ # labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_categories_single <- ggplot(bias_and_all %>% 
+                                   subset(gene != "LOC105199771") %>% 
+                                   arrange(candens), 
+       aes(x = PC1, y = PC2, colour = facet2, shape = candens)) +
+  geom_jitter(size = 4, alpha = 0.5) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "Category") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+  
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_immune_single <- ggplot(bias_and_all %>% 
+                               subset(gene != "LOC105199771") %>% 
+                               arrange(immune_new), 
+       aes(x = PC1, y = PC2, colour = immune_new, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1) +
+ # labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_busco_single <- ggplot(bias_and_all %>% 
+                              subset(gene != "LOC105199771") %>% 
+                              arrange(hymenop), 
+       aes(x = PC1, y = PC2, colour = hymenop, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "BUSCO") +
+#  labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_ors_single <- ggplot(bias_and_all %>% 
+                            subset(gene != "LOC105199771") %>% 
+                            arrange(ors), 
+       aes(x = PC1, y = PC2, colour = ors, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "ORs") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#
+gene1 <- subset(bias_and_all, gene == "LOC105207562")
+gene2 <- subset(bias_and_all, gene == "LOC105200045")
+gene3 <- subset(bias_and_all, gene == "LOC105202344")
+
+three_genes <- rbind(gene1, gene2, gene3)
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+# ggplot(bias_and_all %>% arrange(candens), 
+#        aes(x = PC1, y = PC2, colour = candens)) +
+#   geom_point(size = 4, alpha = 0.6) +
+#   scale_colour_viridis_d(option = "D", direction = 1) +
+#   geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+#                    size = 2, nudge_x = -12, nudge_y = 0.45, direction = "both",
+#                    box.padding = 0.3, max.overlaps = 50) +
+#   labs(subtitle = "Candidates from previous analysis") +
+#   #guides(shape = FALSE) +
+#   theme_minimal()
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_chr_single <- ggplot(bias_and_all %>% 
+                            subset(gene != "LOC105199771"), 
+       aes(x = PC1, y = PC2, colour = chr)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "Chr") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_density_single <- ggplot(bias_and_all %>% 
+         subset(gene != "LOC105199771") %>% 
+         arrange(desc(density)), 
+       aes(x = PC1, y = PC2, colour = density)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density-ranked") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#rm(list = ls())
+```
+
+##### Add everything to PCA input
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#get the master table
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                             header = TRUE) 
+
+#bias_and_all <- merge(bias_and_all, pca_results_with_names, by = "gene")
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop)
+
+# Remove columns by indexing
+columns_to_remove <- c("snp", "chr", "facet", "start", "end", 
+                       "drosophila", "immune", "pop1", "pop2", "pop3", "pop4"
+                       )
+bias_and_all <- bias_and_all[, -which(names(bias_and_all) %in% columns_to_remove)]
+
+
+#bias_and_all$immune <- as.numeric(bias_and_all$immune)
+bias_and_all$candens <- as.numeric(bias_and_all$candens)
+bias_and_all$hymenop <- as.numeric(bias_and_all$hymenop)
+bias_and_all$immune_new <- as.numeric(bias_and_all$immune_new)
+
+```
+
+
+
+Head of input file to be standardized and then used in prcomp
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+names(bias_and_all)
+#Standardize data 
+
+gene_names <- bias_and_all$gene
+standardized_data <- scale(bias_and_all[, -1])
+#str(bias_and_all)
+
+# Perform PCA
+pca_result <- prcomp(standardized_data, center = TRUE, scale. = TRUE)
+
+# Create a data frame with PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+#colnames(pca_scores) <- c("PC1", "PC2")  # Rename columns
+```
+
+Explained variance 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+explained_variance <- (pca_result$sdev^2) / sum(pca_result$sdev^2)
+explained_variance
+
+# Calculate cumulative explained variance
+cumulative_variance <- cumsum(pca_result$sdev^2) / sum(pca_result$sdev^2)
+cumulative_variance
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a scree plot
+scree_data <- data.frame(
+  PC = 1:length(pca_result$sdev),
+  Cumulative_Variance = cumulative_variance
+)
+
+# ggplot(scree_data, aes(x = PC, y = Cumulative_Variance)) +
+#   geom_line() +
+#   geom_point() +
+#   labs(x = "Number of Principal Components", y = "Cumulative Explained Variance") +
+#   ggtitle("Scree Plot: Cumulative Explained Variance") +
+#   theme_minimal()
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Add gene names back
+pca_results_with_names <- data.frame(
+  gene = gene_names,
+  PC1 = pca_scores$PC1,
+  PC2 = pca_scores$PC2,
+  PC3 = pca_scores$PC3,
+  PC4 = pca_scores$PC4,
+  PC5 = pca_scores$PC5
+)
+
+
+#get the master table
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                             header = TRUE)
+
+bias_and_all$facet2 <- "Other"
+
+for(i in 1:nrow(bias_and_all)) {                     
+  if(is.na(bias_and_all$chr[i])){
+    next
+  }
+  if(bias_and_all$immune_new[i] == "1"){
+    bias_and_all$facet2[i]  <- "Immune"
+  }
+  if(bias_and_all$ors[i] == "1"){
+    bias_and_all$facet2[i]  <- "ORs"
+  }
+  if(bias_and_all$hymenop[i] == "1"){
+    bias_and_all$facet2[i]  <- "BUSCO"
+  }
+  if(bias_and_all$immune_new[i] == "1" & bias_and_all$hymenop[i] == "1"){
+    bias_and_all$facet2[i]  <- "Immune and BUSCO"
+  }
+  if(bias_and_all$ors[i] == "1" & bias_and_all$hymenop[i] == "1"){
+    bias_and_all$facet2[i]  <- "ORS and BUSCO"
+  }
+}
+
+bias_and_all <- merge(bias_and_all, pca_results_with_names, by = "gene")
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop)
+bias_and_all$chr <- as.factor(bias_and_all$chr)
+bias_and_all$immune_new <- as.factor(bias_and_all$immune_new)
+bias_and_all$ors <- as.factor(bias_and_all$ors)
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_candidates_multiple <- ggplot(bias_and_all %>% 
+                                     subset(gene != "LOC105199771") %>% 
+                                     arrange(candens), 
+       aes(x = PC1, y = PC2, colour = candens)) +
+  geom_point(size = 4, alpha = 0.5) +
+  scale_colour_viridis_d(option = "C", direction = 1) +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal() 
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_categories_multiple <- ggplot(bias_and_all %>%
+                                     subset(gene != "LOC105199771"), 
+       aes(x = PC1, y = PC2, colour = facet2, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "C", direction = 1, name = "Category") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal() 
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_immune_multiple <- ggplot(bias_and_all %>% 
+                                 subset(gene != "LOC105199771") %>% 
+                                 arrange(immune_new), 
+       aes(x = PC1, y = PC2, colour = immune_new, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "C", direction = 1, name = "Immune") +
+ # labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_busco_multiple <- ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(hymenop), 
+       aes(x = PC1, y = PC2, colour = hymenop, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "C", direction = 1, name = "BUSCO") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_ors_multiple <- ggplot(bias_and_all %>% 
+                              subset(gene != "LOC105199771") %>% 
+                              arrange(ors), 
+       aes(x = PC1, y = PC2, colour = ors, shape = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "C", direction = 1, name = "ORs") +
+ # labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#
+gene1 <- subset(bias_and_all, gene == "LOC105207562")
+gene2 <- subset(bias_and_all, gene == "LOC105200045")
+gene3 <- subset(bias_and_all, gene == "LOC105202344")
+
+three_genes <- rbind(gene1, gene2, gene3)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# 
+# ggplot(bias_and_all %>% arrange(candens), 
+#        aes(x = PC1, y = PC2, colour = candens)) +
+#   geom_point(size = 4, alpha = 0.6) +
+#   scale_colour_viridis_d(option = "C", direction = 1) +
+#   geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+#                    size = 2, nudge_x = -12, nudge_y = 0.45, direction = "both",
+#                    box.padding = 0.3, max.overlaps = 50) +
+#   labs(subtitle = "Candidates from previous analysis") +
+#   #guides(shape = FALSE) +
+#   theme_minimal()
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_chr_multiple <- ggplot(bias_and_all %>% 
+                            subset(gene != "LOC105199771") %>% 
+                            arrange(candens), 
+       aes(x = PC1, y = PC2, colour = chr)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "Chr") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_density_multiple <- ggplot(bias_and_all %>% 
+                                  subset(gene != "LOC105199771") %>% 
+                                  arrange(desc(density)), 
+       aes(x = PC1, y = PC2, colour = density)) +
+  geom_point(size = 4, alpha = 0.6) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density-ranked") +
+  #labs(subtitle = "Candidates from previous analysis") +
+  #guides(shape = FALSE) +
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        legend.box = "horizontal")
+
+```
+
+## Candidates from previous analysis
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_candidates_single 
+plot_candidates_multiple
+
+```
+
+## Combined categories
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_categories_single
+plot_categories_multiple
+
+```
+
+## Immune genes only
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_immune_single
+plot_immune_multiple
+
+```
+
+## BUSCO
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_busco_single
+plot_busco_multiple
+
+```
+
+# ORs
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_ors_single
+plot_ors_multiple
+
+```
+
+# Per chromosome
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_chr_single
+plot_chr_multiple
+
+```
+
+# Density values
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_density_single
+plot_density_multiple
+
+```

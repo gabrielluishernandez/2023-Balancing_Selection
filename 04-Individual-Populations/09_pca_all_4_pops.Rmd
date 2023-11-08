@@ -1,0 +1,614 @@
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+```
+
+
+#### Is there a correlation between meassuring summary statistics (clr, ncd) for the  
+#### totality of the 240 samples and those meassured in 4 sub-populations? 
+x-axis: Summary statistics calculated with the totality of the 240 samples.  
+y-axis: the average of the summary statistics calculated for the 4 subpopulations.  
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##### CLR
+
+pop1_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-1.txt', 
+                         header = TRUE)
+pop1_genes <- pop1_genes[, c("gene", "clr")]
+names(pop1_genes) <- c("gene", "clr_pop1")
+wide_pop1 <- pivot_wider(pop1_genes, names_from = "gene", 
+                         values_from = "clr_pop1")
+
+##
+pop2_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-2.txt', 
+                         header = TRUE)
+pop2_genes <- pop2_genes[, c("gene", "clr")]
+names(pop2_genes) <- c("gene", "clr_pop2")
+wide_pop2 <- pivot_wider(pop2_genes, names_from = "gene", 
+                         values_from = "clr_pop2")
+
+##
+pop3_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-3.txt', 
+                         header = TRUE)
+pop3_genes <- pop3_genes[, c("gene", "clr")]
+names(pop3_genes) <- c("gene", "clr_pop3")
+wide_pop3 <- pivot_wider(pop3_genes, names_from = "gene", 
+                         values_from = "clr_pop3")
+
+##
+pop4_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-4.txt', 
+                         header = TRUE)
+pop4_genes <- pop4_genes[, c("gene", "clr")]
+names(pop4_genes) <- c("gene", "clr_pop4")
+wide_pop4 <- pivot_wider(pop4_genes, names_from = "gene", 
+                         values_from = "clr_pop4")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#10864
+merged_wide_clr <- bind_rows(wide_pop1, wide_pop2, wide_pop3, wide_pop4)
+
+merged_wide_clr <- merged_wide_clr %>% select_if(~ !any(is.na(.)))
+#6369
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#pairs(t(merged_wide_clr))
+
+#cor(t(merged_wide_clr))
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                             header = TRUE)
+
+common_loci <- names(merged_wide_clr)
+means_pops_clrs <- colMeans(merged_wide_clr)
+#combined_cls <- colMeans(merged_wide_clr)
+#plot(means_pops_clrs,combined_clr,pch='.')
+clrs = bias_and_all$clr
+names(clrs) <- bias_and_all$gene
+
+#plot(clrs[common_loci], means_pops_clrs, pch = ".")
+#abline(30,-1)
+
+
+clr_plot_data_to_combine <- data.frame(
+  gene = common_loci,
+  Clr = clrs[common_loci],
+  Mean_Pops_Clr = means_pops_clrs
+)
+
+clr_plot_data <- merge(clr_plot_data_to_combine, bias_and_all, by= "gene")
+clr_plot_data$candens <- as.factor(clr_plot_data$candens)
+
+#locus = rep(names(merged_wide_clr),each=4)
+#population = rep(paste("pop",1:4),dim(merged_wide_clr)[2])
+#score <- as.vector(as.matrix(merged_wide_clr))
+#longdat <-data.frame(locus,population,score)
+#mod1 <- lm(score ~ 0+locus, data = longdat)
+
+#head(coef(mod1))
+#combined_clr <- coef(mod1)
+
+write.table(clr_plot_data, "results/real_4_pops_clr.txt", 
+            col.names = TRUE, quote = FALSE)
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+clr_plot_average <- ggplot(clr_plot_data %>% arrange(candens), 
+       aes(x = Clr, y = Mean_Pops_Clr, colour = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  # Adding linear regression line
+  #geom_label_repel(data = strong_genes, aes(label = gene), colour = "black",
+   #                size= 2, nudge_x = 3, nudge_y = 6, direction = "both",
+    #               box.padding = 0.3, max.overlaps = 50) +
+  scale_colour_viridis_d(option = "D", 
+                         direction = -1,
+                        name = "Candidate",
+                        labels = c("No","Yes")) + 
+  labs(y = "Mean 4-pops") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+standardized_data <- scale(merged_wide_clr)
+
+# Perform PCA
+pca_result <- prcomp(standardized_data, center = TRUE, scale. = TRUE)
+
+# Create a data frame with PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Explained variance 
+
+explained_variance <- (pca_result$sdev^2) / sum(pca_result$sdev^2)
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pca_scores$row_number <- seq_len(nrow(pca_scores))
+
+# Create a scatter plot with colored dots based on row number
+pca_ballermix <- ggplot(pca_scores, aes(x = PC1, y = PC2, color = as.factor(row_number))) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "SubPop") + 
+  geom_point(size = 4) + labs(subtitle = "ballermix") +
+  theme_minimal()
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##### NCD
+
+pop1_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-1.txt', 
+                         header = TRUE)
+pop1_genes <- pop1_genes[, c("gene", "ncd05")]
+names(pop1_genes) <- c("gene", "ncd05_pop1")
+wide_pop1 <- pivot_wider(pop1_genes, names_from = "gene", 
+                         values_from = "ncd05_pop1")
+
+##
+pop2_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-2.txt', 
+                         header = TRUE)
+pop2_genes <- pop2_genes[, c("gene", "ncd05")]
+names(pop2_genes) <- c("gene", "ncd05_pop2")
+wide_pop2 <- pivot_wider(pop2_genes, names_from = "gene", 
+                         values_from = "ncd05_pop2")
+
+##
+pop3_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-3.txt', 
+                         header = TRUE)
+pop3_genes <- pop3_genes[, c("gene", "ncd05")]
+names(pop3_genes) <- c("gene", "ncd05_pop3")
+wide_pop3 <- pivot_wider(pop3_genes, names_from = "gene", 
+                         values_from = "ncd05_pop3")
+
+##
+pop4_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-4.txt', 
+                         header = TRUE)
+pop4_genes <- pop4_genes[, c("gene", "ncd05")]
+names(pop4_genes) <- c("gene", "ncd05_pop4")
+wide_pop4 <- pivot_wider(pop4_genes, names_from = "gene", 
+                         values_from = "ncd05_pop4")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#10864
+merged_wide_ncd05 <- bind_rows(wide_pop1, wide_pop2, wide_pop3, wide_pop4)
+
+merged_wide_ncd05 <- merged_wide_ncd05 %>% select_if(~ !any(is.na(.)))
+#6369
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#pairs(t(merged_wide_ncd05))
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Compare the mean value fcalculated for each population agains the values 
+# calculated for the totality of the samples
+
+common_loci <- names(merged_wide_ncd05)
+means_pops_ncd <- colMeans(merged_wide_ncd05)
+ncd = bias_and_all$ncd05
+names(ncd) <- bias_and_all$gene
+
+ncd_plot_data_to_combine <- data.frame(
+  gene = common_loci,
+  ncd = ncd[common_loci],
+  mean_pops_ncd = means_pops_ncd
+)
+
+ncd_plot_data <- merge(ncd_plot_data_to_combine, bias_and_all, by= "gene")
+ncd_plot_data$candens <- as.factor(ncd_plot_data$candens)
+
+write.table(ncd_plot_data, "results/real_4_pops_ncd.txt", 
+            col.names = TRUE, quote = FALSE)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ncd05_plot_average <-ggplot(ncd_plot_data %>% arrange(candens), 
+       aes(x = ncd05, y = mean_pops_ncd, colour = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  # Adding linear regression line
+  #geom_label_repel(data = strong_genes, aes(label = gene), colour = "black",
+   #                size= 2, nudge_x = 3, nudge_y = 6, direction = "both",
+    #               box.padding = 0.3, max.overlaps = 50) +
+  scale_colour_viridis_d(option = "C", 
+                         direction = -1, 
+                         name = "Candidate",
+                        labels = c("No","Yes")) + 
+  labs(y = "Mean 4-pops") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+standardized_data <- scale(merged_wide_ncd05)
+
+# Perform PCA
+pca_result <- prcomp(standardized_data, center = TRUE, scale. = TRUE)
+
+# Create a data frame with PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+#colnames(pca_scores) <- c("PC1", "PC2")  # Rename columns
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Explained variance 
+
+explained_variance <- (pca_result$sdev^2) / sum(pca_result$sdev^2)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pca_scores$row_number <- seq_len(nrow(pca_scores))
+
+# Create a scatter plot with colored dots based on row number
+pca_ncd <- ggplot(pca_scores, aes(x = PC1, y = PC2, color = as.factor(row_number))) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "SubPop") + 
+  geom_point(size = 4) + labs(subtitle = "ncd") +
+  theme_minimal()
+
+```
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Density-based (combined ncd and clr)
+
+pop1_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-1.txt', 
+                         header = TRUE)
+pop1_genes <- pop1_genes[, c("gene", "density")]
+names(pop1_genes) <- c("gene", "density_pop1")
+wide_pop1 <- pivot_wider(pop1_genes, names_from = "gene", 
+                         values_from = "density_pop1")
+
+##
+pop2_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-2.txt', 
+                         header = TRUE)
+pop2_genes <- pop2_genes[, c("gene", "density")]
+names(pop2_genes) <- c("gene", "density_pop2")
+wide_pop2 <- pivot_wider(pop2_genes, names_from = "gene", 
+                         values_from = "density_pop2")
+
+##
+pop3_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-3.txt', 
+                         header = TRUE)
+pop3_genes <- pop3_genes[, c("gene", "density")]
+names(pop3_genes) <- c("gene", "density_pop3")
+wide_pop3 <- pivot_wider(pop3_genes, names_from = "gene", 
+                         values_from = "density_pop3")
+
+##
+pop4_genes <- read.table('input/2023-08-04-ranked_by_dens-POP-4.txt', 
+                         header = TRUE)
+pop4_genes <- pop4_genes[, c("gene", "density")]
+names(pop4_genes) <- c("gene", "density_pop4")
+wide_pop4 <- pivot_wider(pop4_genes, names_from = "gene", 
+                         values_from = "density_pop4")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#10864
+merged_wide_density <- bind_rows(wide_pop1, wide_pop2, wide_pop3, wide_pop4)
+
+merged_wide_density <- merged_wide_density %>% select_if(~ !any(is.na(.)))
+#6369
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#pairs(exp(t(merged_wide_density)))
+
+#pairs(t(merged_wide_density))
+
+#cor(t(merged_wide_density))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Compare the mean value calculated for each population against the values 
+# calculated for the totality of the samples
+
+common_loci <- names(merged_wide_density)
+means_pops_density <- colMeans(merged_wide_density)
+density = bias_and_all$density
+names(density) <- bias_and_all$gene
+
+dens_plot_data <- data.frame(
+  gene = common_loci,
+  density_real = density[common_loci],
+  means_pops_density = means_pops_density
+)
+
+dens_plot_data <- merge(dens_plot_data, bias_and_all, by= "gene")
+dens_plot_data$candens <- as.factor(dens_plot_data$candens)
+
+write.table(dens_plot_data, "results/real_4_pops_density.txt", 
+            col.names = TRUE, quote = FALSE)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dens_plot_average <- ggplot(dens_plot_data %>% arrange(candens), 
+       aes(x = density, y = means_pops_density, colour = candens)) +
+  geom_point(size = 4, alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  # Adding linear regression line
+  #geom_label_repel(data = strong_genes, aes(label = gene), colour = "black",
+   #                size= 2, nudge_x = 3, nudge_y = 6, direction = "both",
+    #               box.padding = 0.3, max.overlaps = 50) +
+  scale_colour_viridis_d(option = "A", 
+                         direction = -1, 
+                         name = "Candidate",
+                        labels = c("No","Yes")) + 
+  labs(y = "Mean 4-pops") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+standardized_data <- scale(merged_wide_density)
+
+# Perform PCA
+pca_result <- prcomp(standardized_data, center = TRUE, scale. = TRUE)
+
+# Create a data frame with PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Explained variance 
+
+explained_variance <- (pca_result$sdev^2) / sum(pca_result$sdev^2)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pca_scores$row_number <- seq_len(nrow(pca_scores))
+
+# Create a scatter plot with colored dots based on row number
+pca_density <- ggplot(pca_scores, aes(x = PC1, y = PC2, color = as.factor(row_number))) +
+  scale_colour_viridis_d(option = "D", direction = 1, name = "SubPop") + 
+  geom_point(size = 4) + labs(subtitle = "Combined ncd+ballermix by density") +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+grid.arrange(clr_plot_average, ncd05_plot_average, dens_plot_average, ncol = 2)
+
+```
+
+##### These are PCAs with the goal to separate the populations.  
+##### To check if the populations are independent.  
+##### We could conclude that they are.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+grid.arrange(pca_ballermix, pca_ncd, pca_density)
+
+```
+
+
+
+# Density-base selection
+
+#####################
+
+Using MASS to calculate density
+https://slowkow.com/notes/ggplot2-color-by-density/
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(MASS)
+library(ggplot2)
+library(viridis)
+
+
+#> Loading required package: viridisLite
+theme_set(theme_bw(base_size = 16))
+
+# Get density of points in 2 dimensions.
+# @param x A numeric vector.
+# @param y A numeric vector.
+# @param n Create a square n by n grid to compute density.
+# @return The density within each square.
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+
+set.seed(1)
+
+
+means_for_density <- merge(
+  ncd_plot_data_to_combine, 
+  clr_plot_data_to_combine, 
+  by = "gene")
+
+sd_clr <- sd(means_for_density$Mean_Pops_Clr)
+sd_ncd <- sd(means_for_density$mean_pops_ncd)
+
+
+means_for_density$density <- get_density(means_for_density$Mean_Pops_Clr/sd_clr, 
+                                    means_for_density$mean_pops_ncd/sd_ncd, 
+                                    h = c(10, 10), n = 500)
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#%>% arrange(desc(density))
+# ggplot(means_for_density  ,
+#        aes(Mean_Pops_Clr, mean_pops_ncd)) + 
+#   geom_point(aes(colour = density), alpha = 0.7, size = 5, shape =18) +
+#   scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+#   #geom_density_2d(bins = 550, alpha = 0.3, color = "black") +
+#   xlab("B0-MAF") + ylab("NCD") + 
+#   theme_minimal()
+
+```
+
+
+
+### Candidate genes
+##### The candiadate genes are those in the top 1% of the density distribution  
+##### which was calculated with the mean of the summary statistics measured  
+##### separately for the 4 subpopulations. 
+##### These genes are shared by the 4 subpopulations and thus we belive the 
+##### effect of environmental factors is diminished on them.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Select the top 1%
+
+#quantile(means_for_density$density, 0.01)
+
+means_for_density$candens <- "0"
+
+for(i in 1:nrow(means_for_density)) {                     
+  if(is.na(means_for_density$Mean_Pops_Clr[i])){
+    next
+  }
+  if(means_for_density$density[i] <= quantile(means_for_density$density, 0.01)){
+    means_for_density$candens[i]  <- "1"
+  }
+  # if(means_for_density$density[i] <= 0.0015){
+  #   means_for_density$candens[i]  <- "2"
+  # }
+  # if(means_for_density$Mean_Pops_Clr[i] >= 16.11603 & means_for_density$ncd05[i] <= 0.4647506){
+  #   means_for_density$candens[i]  <- "1"
+  # }
+}
+
+means_for_density$candens <- as.factor(means_for_density$candens)
+
+#Organize by Mean_Pops_Clr
+means_for_density <- means_for_density[order(means_for_density$density, decreasing = FALSE), ]
+
+#eliminate duplicates keeping the entry with the highest Mean_Pops_Clr per gene.
+means_for_density <- means_for_density[!duplicated(means_for_density$gene), ]
+
+#nrow(subset(means_for_density, candens == "1"))
+
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+strong_genes <- subset(bias_and_all, PC1 >= 5) %>% arrange(desc(PC1))
+
+write.table(strong_genes, file = "stong_genes_pca.txt", quote = FALSE,
+            row.names = FALSE, col.names = FALSE)
+
+
+ensemble_names <- read.table('pca_genes_ensembl.txt', 
+                         header = TRUE, sep = "\t")
+
+strong_genes <- merge(strong_genes, ensemble_names, by = "gene" )
+
+#
+gene1 <- subset(strong_genes, gene == "LOC105207562")
+gene2 <- subset(strong_genes, gene == "LOC105200045")
+gene3 <- subset(strong_genes, gene == "LOC105202344")
+
+three_genes <- rbind(gene1, gene2, gene3)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#%>% subset(gene != "LOC105199771")
+ggplot(means_for_density %>% 
+  arrange(desc(density)), aes(Mean_Pops_Clr, mean_pops_ncd)) + 
+  geom_point(aes(colour = density, shape = candens), alpha = 0.7, size = 5) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  geom_label_repel(data = three_genes, aes(label = name), colour = "black",
+                   size = 2, nudge_x = 2, nudge_y = 0.45, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  geom_density_2d(bins = 80, alpha = 0.3, color = "black") +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(20, 18),
+                     labels = c("No-BLS", "BLS")) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#This are genes identified by:
+# 1. Measuring CLR and NCD per sub-population
+# 2. Calculate the means for these values 
+# 3. Use the density "trick" to select those loci with lower density (the outliers)
+nrow(subset(means_for_density, candens == "1"))
+
+average_4_subpop_candidates <- subset(means_for_density, candens == "1") %>% arrange(density)
+average_4_subpop_candidates$gene
+
+write.table(average_4_subpop_candidates$gene,
+            "tmp/average_4_subpop_cand_gene.txt",
+            quote = FALSE, 
+            row.names = FALSE,
+            col.names = FALSE
+            )
+
+       
+```

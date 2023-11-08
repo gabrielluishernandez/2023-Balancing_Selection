@@ -1,0 +1,50 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+#install.packages("vegan")
+library(vegan)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+distance_matrix <- matrix(c(
+  0, 625, 857, 1131,
+  625, 0, 238, 511,
+  857, 238, 0, 275,
+  1131, 511, 275, 0
+), nrow = 4, byrow = TRUE)
+
+distance_matrix
+
+gene_matrix <- matrix(c(
+  0, 53, 55, 25,
+  53, 0, 71, 48,
+  55, 71, 0, 94,
+  25, 48, 94, 0
+), nrow = 4, byrow = TRUE)
+
+gene_matrix
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Calculate distance matrices
+#dist_matrix <- as.dist(distance_matrix)
+
+#Performe Mantel test
+mantel_result <- mantel(dist_matrix, gene_matrix, method = "pearson", permutations = 10000)
+
+#Get results
+correlation_coefficient <- mantel_result$statistic
+p_value <- mantel_result$signif
+
+print(paste("Correlation coefficient:", correlation_coefficient))
+print(paste("P-value:", p_value))
+
+```
