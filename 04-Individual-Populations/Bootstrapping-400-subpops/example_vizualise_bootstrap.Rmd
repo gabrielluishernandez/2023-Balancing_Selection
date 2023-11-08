@@ -1,0 +1,716 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(ggpointdensity)
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+# CLR
+
+
+
+clr_100_sets <- read.table("results/final_clr_table_by_sets.txt",
+                           header = TRUE)
+
+bias_and_all <- read.table('input/2023_08_22_MASTER_cleaned_all_pops.txt',
+                           header = TRUE)
+
+clr_100_sets <- merge(bias_and_all, clr_100_sets, by = "gene")
+
+clr_100_sets <- clr_100_sets %>%
+  rowwise() %>%
+  mutate(
+    "shuffled_pops_mean100" = mean(c_across(starts_with("mean_clr_set"))),
+    "shuffled_pops_SD100" = mean(c_across(starts_with("sd_clr_set")))
+  )
+
+real_4_pops_clr <- read.table("results/real_4_pops_clr.txt", 
+                                header = TRUE)
+real_4_pops_clr <- real_4_pops_clr[, 1:3]
+colnames(real_4_pops_clr)[colnames(real_4_pops_clr) == "Mean_Pops_Clr"] <- "Mean_RealPops_Clr"
+
+clr_100_sets <- merge(clr_100_sets, real_4_pops_clr, by = "gene")
+clr_100_sets$candens <- as.factor(clr_100_sets$candens)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Information for ggplot anotation
+gene1 <- subset(clr_100_sets, gene == "LOC105207562")
+gene2 <- subset(clr_100_sets, gene == "LOC105200045")
+gene3 <- subset(clr_100_sets, gene == "LOC105202344")
+gene4 <- subset(clr_100_sets, gene == "LOC105199771")
+
+three_genes <- rbind(gene1, gene4)
+clr_100_sets$row_name <- rownames(clr_100_sets)
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+gene_in_common_test1 <- intersect(clr_100_sets %>% subset(shuffled_pops_mean100 >= 15),
+                                  clr_100_sets %>% subset(clr >= 20))
+
+#gene_in_common_test1$gene
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Real vs shuffled 4 pops 
+
+ggplot(clr_100_sets %>% arrange(candens), 
+       aes(x = Mean_RealPops_Clr, y = shuffled_pops_mean100, shape = candens, 
+           colour = shuffled_pops_SD100 )) +
+  geom_point(size = 4, alpha = 0.6)+
+  # Adding linear regression line
+geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+   #Add names to selected points
+  geom_label_repel(data = gene_in_common_test1 , 
+                   aes(label = row_name), colour = "black",
+                   size= 2, nudge_x = 2, nudge_y = 3, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  #clr_100_sets %>% subset(shuffled_pops_mean100 >= 15
+  # Change colors
+  scale_colour_viridis_c(option = "D", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(subtitle = "CLR Shuffled vs original subpopulations",
+       y = "Mean shuffled subpopulations", x = "Mean original subpopulations") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(clr_100_sets %>% arrange(candens), 
+       aes(x = Mean_RealPops_Clr, y = shuffled_pops_mean100, shape = candens, 
+           colour =candens )) +
+  geom_point(size = 4, alpha = 0.6)+
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+   #Add names to selected points
+  # geom_label_repel(data = gene_in_common_test1 , 
+  #                  aes(label = row_name), colour = "black",
+  #                  size= 2, nudge_x = 2, nudge_y = 3, direction = "both",
+  #                  box.padding = 0.3, max.overlaps = 50) +
+  #clr_100_sets %>% subset(shuffled_pops_mean100 >= 15
+  # Change colors
+  scale_colour_viridis_d(option = "D", direction = -1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(subtitle = "CLR Shuffled vs original subpopulations",
+       y = "Mean shuffled subpopulations", x = "Mean original subpopulations") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a basic density plot
+# ggplot(data = clr_100_sets, aes(x = shuffled_pops_SD100)) +
+#   geom_density(fill = "blue", color = "black", alpha = 0.55) +
+#   labs(y = "Density")+
+#   geom_vline(xintercept = 6.461141)+
+#   geom_vline(xintercept = mean(clr_100_sets$shuffled_pops_SD100, na.rm = TRUE),
+#              linetype = "dotted") +
+#   theme_minimal()
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# #summary of lm od triagles email Richard
+# 
+# #model <- lm(clr_100_sets$Mean_RealPops_Clr ~ clr_100_sets$shuffled_pops_mean100)
+# 
+# candidates_only <- subset(clr_100_sets, 
+#                           candens == 1) 
+# 
+# model_candidates_only <- lm(candidates_only$shuffled_pops_mean100 ~ candidates_only$Mean_RealPops_Clr)
+# summary(model_candidates_only)
+# 
+# 
+# mod3 <- lm(shuffled_pops_mean100 ~ Mean_RealPops_Clr, 
+#            offset = Mean_RealPops_Clr,
+#            data = candidates_only)
+# summary(mod3)
+# 
+# 
+# mod4 <- lm(shuffled_pops_mean100 ~ 1,
+#            offset = Mean_RealPops_Clr,
+#            data = candidates_only)
+# 
+# summary(mod4)
+# 
+# anova(mod4, mod3)
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(clr_100_sets, 
+       aes(x = clr, y = Mean_RealPops_Clr, colour = shuffled_pops_mean100,
+           shape = candens)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  #geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = gene_in_common_test1, #clr_100_sets %>% subset(clr >= 22)
+                   aes(label = row_name), colour = "black",
+                   size= 2, nudge_x = 3, nudge_y = 6, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_c(option = "D", direction = 1, name = "Shuffled pops") + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean 4 Real pops", x = "All 240 samples", 
+       subtitle = "CLR Real 4 subpops vs values for total samples") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(clr_100_sets %>% arrange(candens), 
+       aes(x = clr, y = Mean_RealPops_Clr, colour = candens)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  #geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = gene_in_common_test1, #clr_100_sets %>% subset(clr >= 22)
+                   aes(label = row_name), colour = "black",
+                   size= 2, nudge_x = 5, nudge_y = 6, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_d(option = "D", direction = -1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean 4 Real pops", x = "All 240 samples", 
+       subtitle = "CLR Real 4 subpops vs values for total samples") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(clr_100_sets, 
+       aes(x = clr, y = shuffled_pops_mean100, colour = shuffled_pops_SD100,
+           shape = candens)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+ #geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = gene_in_common_test1, #clr_100_sets %>% subset(clr >= 22)
+                   aes(label = row_name), colour = "black",
+                   size= 2, nudge_x = 3, nudge_y = 6, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_c(option = "D", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 subpops", x = "All 240 samples", 
+       subtitle = "CLR Shuffled supops vs values for total samples") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+
+
+# I want to know how many candens and labeled as "false positive?".  
+# Because are intrinsic to the whole samples or because they are products of  
+# geographic structure
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(clr_100_sets %>% arrange(candens), 
+       aes(x = clr, y = shuffled_pops_mean100, colour = candens)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+ #geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = gene_in_common_test1, #clr_100_sets %>% subset(clr >= 22)
+                   aes(label = row_name), colour = "black",
+                   size= 2, nudge_x = 3, nudge_y = 6, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_d(option = "D", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 subpops", x = "All 240 samples", 
+       subtitle = "CLR Shuffled supops vs values for total samples") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+# NCD
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+ncd05_100_sets <- read.table("results/final_ncd05_by_sets.txt",
+                           header = TRUE)
+
+ncd05_100_sets <- merge(bias_and_all, ncd05_100_sets, by = "gene")
+
+ncd05_100_sets <- ncd05_100_sets %>%
+  rowwise() %>%
+  mutate(
+    "shuffled_pops_mean100" = mean(c_across(starts_with("mean_ncd05_set"))),
+    "shuffled_pops_SD100" = mean(c_across(starts_with("sd_ncd05_set")))
+  )
+real_4_pops_ncd05 <- read.table("results/real_4_pops_ncd.txt", 
+                                header = TRUE)
+real_4_pops_ncd05 <- real_4_pops_ncd05[, 1:3]
+colnames(real_4_pops_ncd05)[colnames(real_4_pops_ncd05) == "mean_pops_ncd"] <- "Mean_RealPops_NCD"
+
+ncd05_100_sets <- merge(ncd05_100_sets, real_4_pops_ncd05, by = "gene")
+ncd05_100_sets$candens <- as.factor(ncd05_100_sets$candens)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Information for ggplot anotation
+gene1 <- subset(ncd05_100_sets, gene == "LOC105207562")
+gene2 <- subset(ncd05_100_sets, gene == "LOC105200045")
+gene3 <- subset(ncd05_100_sets, gene == "LOC105202344")
+gene4 <- subset(ncd05_100_sets, gene == "LOC105199771")
+
+three_genes <- rbind(gene1, gene4)
+```
+
+# Real vs shuffled 4 pops 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(ncd05_100_sets %>% arrange(candens), 
+       aes(x = Mean_RealPops_NCD, y = shuffled_pops_mean100, shape = candens,
+           colour = shuffled_pops_SD100)) +
+  geom_point(size = 4, alpha = 0.6)+
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+ # geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+  #                 size= 2, nudge_x = -0.1, nudge_y = -0.009, direction = "both",
+   #                box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_c(option = "C", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 pops", x = "Mean 4 Real pops", 
+       subtitle = "NCD Shuffled vs Real subpopulations") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(ncd05_100_sets %>% arrange(candens), 
+       aes(x = Mean_RealPops_NCD, y = shuffled_pops_mean100, shape = candens,
+           colour = candens)) +
+  geom_point(size = 4, alpha = 0.6)+
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+ # geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+  #                 size= 2, nudge_x = -0.1, nudge_y = -0.009, direction = "both",
+   #                box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_d(option = "C", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 pops", x = "Mean 4 Real pops", 
+       subtitle = "NCD Shuffled vs Real subpopulations") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(ncd05_100_sets, 
+       aes(x = ncd05, y = shuffled_pops_mean100, colour = shuffled_pops_SD100)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+   geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                    size= 2, nudge_x = -0.1, nudge_y = -0.009, direction = "both",
+                    box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_c(option = "C", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 subpops", x = "All 240 samples", 
+       subtitle = "NCD Shuffled supops vs values for total samples") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(ncd05_100_sets, 
+       aes(x = ncd05, y = Mean_RealPops_NCD, colour = shuffled_pops_mean100)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.1, nudge_y = -0.009, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_c(option = "C", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean 4 Real pops", x = "All 240 samples", 
+       subtitle = "NCD Real 4 subpops vs values for total samples") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+
+
+# Combined based on density
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+density_100_sets <- read.table("results/final_density_by_sets.txt",
+                           header = TRUE)
+
+density_100_sets <- merge(bias_and_all, density_100_sets, by = "gene")
+
+density_100_sets <- density_100_sets %>%
+  rowwise() %>%
+  mutate(
+    "shuffled_pops_mean100" = mean(c_across(starts_with("mean_density_set"))),
+    "shuffled_pops_SD100" = mean(c_across(starts_with("sd_density_set")))
+  )
+
+real_4_pops_density <- read.table("results/real_4_pops_density.txt", 
+                                header = TRUE)
+real_4_pops_density <- real_4_pops_density[, 1:3]
+colnames(real_4_pops_density)[colnames(real_4_pops_density) == "means_pops_density"] <- "Mean_RealPops_density"
+
+density_100_sets <- merge(density_100_sets, real_4_pops_density, by = "gene")
+density_100_sets$candens <- as.factor(density_100_sets$candens)
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Information for ggplot annotation
+gene1 <- subset(density_100_sets, gene == "LOC105207562")
+gene2 <- subset(density_100_sets, gene == "LOC105200045")
+gene3 <- subset(density_100_sets, gene == "LOC105202344")
+gene4 <- subset(density_100_sets, gene == "LOC105199771")
+
+three_genes <- rbind(gene1, gene4)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+gene_in_common_test1 <- intersect(density_100_sets %>% subset(shuffled_pops_mean100 >= 15),
+                                  density_100_sets %>% subset(clr >= 20))
+
+
+
+```
+
+
+# Real vs shuffled 4 pops 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(density_100_sets %>% arrange(candens), 
+       aes(x = Mean_RealPops_density, y = shuffled_pops_mean100, shape = candens,
+           colour = shuffled_pops_SD100)) +
+  geom_point(size = 4, alpha = 0.6)+
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.0005, nudge_y = 0.002, 
+                   direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_c(option = "B", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 pops", x = "Mean 4 Real pops", 
+       subtitle = "Density Shuffled vs Real subpopulations") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(density_100_sets %>% arrange(candens), 
+       aes(x = Mean_RealPops_density, y = shuffled_pops_mean100, colour = candens,
+          shape = candens)) +
+  geom_point(size = 4, alpha = 0.6)+
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.0005, nudge_y = 0.002, 
+                   direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_d(option = "E", direction = -1) + 
+  # geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  # geom_abline(slope = 1, intercept = 0.001, linetype="dashed", color="red") +
+  # geom_abline(slope = 1, intercept = -0.001, linetype="dashed", color="red") +
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 pops", x = "Mean 4 Real pops", 
+       subtitle = "Density Shuffled vs Real subpopulations") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Subset the data for candens == 1
+subset_data <- subset(density_100_sets, candens == 1)
+
+# Fit a linear regression model using the subset
+model <- lm(shuffled_pops_mean100 ~ Mean_RealPops_density, data = subset_data)
+
+# Predict and get confidence intervals for the entire dataset
+predictions <- predict(model, newdata = density_100_sets, interval = "confidence", level = 0.95)
+
+# Add the predictions and intervals to the original data
+density_100_sets$predicted <- predictions[,1]
+density_100_sets$lwr <- predictions[,2]
+density_100_sets$upr <- predictions[,3]
+
+# Add a column to mark genes that fall within the confidence interval
+density_100_sets$selected <- ifelse(density_100_sets$shuffled_pops_mean100 >= density_100_sets$lwr & 
+                                    density_100_sets$shuffled_pops_mean100 <= density_100_sets$upr, 1, 0)
+
+density_100_sets$selected <- as.factor(density_100_sets$selected)
+
+# If you want, you can remove temporary columns
+# density_100_sets <- density_100_sets[, !names(density_100_sets) %in% c("predicted", "lwr", "upr")]
+
+
+density_100_sets <- density_100_sets %>%
+  mutate(category = case_when(
+    selected == 1 & candens == 1 ~ "selected_1_candens_1",
+    #selected == 1 & candens == 0 ~ "selected_1_candens_0",
+    selected == 0 & candens == 0 ~ "selected_0_candens_0",
+    selected == 0 & candens == 1 ~ "selected_0_candens_1",
+    TRUE ~ NA_character_
+  ))
+
+nrow(subset(density_100_sets, category =="selected_1_candens_1"))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+distance_threshold <- 0.001
+density_100_sets$in_area <- ifelse(abs(density_100_sets$Mean_RealPops_density
+                                       - density_100_sets$shuffled_pops_mean100)
+                                   <= distance_threshold, 1, 0)
+
+nrow(subset(density_100_sets, in_area == 1) %>% subset(candens == 1))
+
+density_100_sets$in_area <- as.factor(density_100_sets$in_area)
+
+density_100_sets$area_candi <- ifelse(density_100_sets$in_area == 1 & density_100_sets$candens == 1, 
+                                      1,0)
+nrow(subset(density_100_sets, area_candi == 1))
+
+# density_100_sets$area_candi <- with(density_100_sets, 
+#              ifelse(in_area == 1 & candens == 1, 2,
+#                     ifelse(in_area == 1 & candens == 0, 1,
+#                            ifelse(in_area == 0 & candens == 0, 0, NA))))
+# 
+density_100_sets$area_candi <- as.factor(density_100_sets$area_candi)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(density_100_sets %>% arrange(category), 
+       aes(x = Mean_RealPops_density, y = shuffled_pops_mean100, shape = candens,
+           colour = category)) +
+  geom_point(size = 4, alpha = 0.6)+
+  geom_smooth(data = subset(density_100_sets, candens == 1), 
+              aes(x = Mean_RealPops_density, y = shuffled_pops_mean100), 
+              method = "lm", se = TRUE, color = "grey") + 
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.0005, nudge_y = 0.002, 
+                   direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_d(option = "C", direction = -1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  # geom_abline(slope = 1, intercept = 0.001, linetype="dashed", color="red") +
+  # geom_abline(slope = 1, intercept = -0.001, linetype="dashed", color="red") +
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 pops", x = "Mean 4 Real pops", 
+       subtitle = "Density Shuffled vs Real subpopulations") + 
+  guides(shape = FALSE) +
+  theme_minimal()
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(density_100_sets, 
+       aes(x = density, y = shuffled_pops_mean100, colour = shuffled_pops_SD100)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+   geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.0005, nudge_y = 0.002, 
+                   direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_c(option = "B", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean Shuffled 400 subpops", x = "All 240 samples", 
+       subtitle = "Density Shuffled supops vs values for total samples") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(density_100_sets, 
+       aes(x = density, y = Mean_RealPops_density, colour = shuffled_pops_mean100)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.0005, nudge_y = 0.002, 
+                   direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+ scale_colour_viridis_c(option = "B", direction = 1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  #Change axis labels
+  labs(y = "Mean 4 Real pops", x = "All 240 samples", 
+       subtitle = "Density Real 4 subpops vs values for total samples") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(density_100_sets %>% arrange(candens), 
+       aes(x = density, y = shuffled_pops_mean100, colour = shuffled_pops_SD100,
+           shape = candens)) +
+  geom_point(size = 4, alpha = 0.75) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.0005, nudge_y = 0.002, 
+                   direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_c(option = "B", direction = -1, 
+                         name = "mean of pops SD") + #, 
+                        #  labels = c("No","Yes")) + 
+  #Change axis labels
+  labs(y = "Mean 100 x 4 subpops", x = "Whole population", 
+       subtitle = "Combined statistics by density", shape = "Candidate") + 
+  #guides(shape = FALSE) +
+  geom_hline(yintercept = quantile(density_100_sets$popsmean100, 0.01, 
+                                   na.rm = TRUE), 
+             linetype = "dashed", size = 0.5) +
+  geom_vline(xintercept = quantile(density_100_sets$density, 0.01, 
+                                   na.rm = TRUE),
+             linetype = "dashed", size = 0.5) +
+  theme_minimal()
+
+```
+
+
+From the plot above:
+The button right quadrant is very interesting as the have strong signal in both all- and bootstrap-subpopultaion samples.
+The quadrant made by the top 1% lines is a subset of our original candidate genes.
+The show the stronger signal on the bootstrap analysis.
+
+
+####################3
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+# clr_boxplots <-  ggplot(data_long, aes(x = clr, y = mean_clr_set_, 
+#                                        group = gene)) +
+#   geom_boxplot(width = 0.1) +
+#   #labs(x = "Unique X-Value", y = "Bootstrapped Summary Statistic") +
+#   #theme(legend.position = "none")+
+#   #guides(fill = none) +
+#   theme_minimal()
+#   
+#   
+#   ggplot(data_long, aes(x = factor(clr), y = mean_clr_set_, 
+#                                        group = factor(clr))) +
+#   geom_boxplot(width = 0.1) +
+#   #labs(x = "CLR Value", y = "Mean Value") +
+#   theme(legend.position = "none") +
+#   theme_minimal()
+# 
+# 
+# clr_boxplots <- ggplot(data_long, aes(x = clr, y = mean_clr_set_)) +
+#   geom_boxplot(, width = 0.1) +
+#   #labs(x = "CLR Value", y = "Mean Value") +
+#   theme(legend.position = "none")+
+#   theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Save the plot to the current working directory
+#ggsave("results/clr_boxplots.png", plot = clr_boxplots)
+
+```

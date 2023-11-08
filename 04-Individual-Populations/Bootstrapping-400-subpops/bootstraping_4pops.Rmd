@@ -1,0 +1,225 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+```
+
+# Four subpopulations bootstrapping 100 times
+
+Here we show the results of the bootstrapping analysis did for the four subpopulations.  
+We want to test if the signal between the whole population and subpopulations  
+is consistent in the genes.  
+To identify genes where local variation may be generating strong BLS signal, 
+we have measured BLS in subpopulations.  
+We have defined subpopulations based on the geographical clustering.  
+The sizes of the subpopulations ranged between 22 and 45 and the total number  
+of samples used was 133.  
+To mitigate the effect of a reduced sample size, we bootstrapped the analysis 100.  
+While keeping the same subpopulations size, we  randomly shuffled the samples  
+across these four sets 100 times, thus generation 400 'in silico' subpopulations.
+Next, we measured the two summary statistics (ballermix (CLR), and NCD1),  
+combined them, and assign values to each gene.  
+For the following visualizations we averaged the  
+y-axis: Summary statistics mean across the 400 in silico subpopulations.
+x-axis: Summary statistics for the totality of the 240 samples.
+
+
+RICHARD wants 100 values per gene. 
+Each of this values is the average of the summary statistic 
+calculated with the 4 pops per set-1 to set-100.
+
+I need to:
+-Go into a set.  
+-Calculate the average for the pop1-4.  
+-Save it inside the corresponding set' directory.  
+-Them combine the 100 values per gene into a master table with genes as rows and 
+100 averaged-values as columns.  
+-Calculate the sd for this 100 values.  
+-Plot
+
+
+
+
+
+## CLR
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Get the results from the heavy lifting done in R apocrita
+from_apocrita_400 <- read.table("results/Master_CLR_combined_400.txt", 
+                                header = TRUE)
+from_apocrita_400$candens <- as.factor(from_apocrita_400$candens) 
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Information for ggplot anotation
+gene1 <- subset(from_apocrita_400, gene == "LOC105207562")
+gene2 <- subset(from_apocrita_400, gene == "LOC105200045")
+gene3 <- subset(from_apocrita_400, gene == "LOC105202344")
+gene4 <- subset(from_apocrita_400, gene == "LOC105199771")
+
+three_genes <- rbind(gene1, gene4)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+clr_plot_400 <- ggplot(from_apocrita_400 %>% arrange(candens), 
+       aes(x = clr, y = mean_clr, colour = sd_clr)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = 3, nudge_y = 6, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_c(option = "D", direction = 1, name = "sd CLR") + 
+  #Change axis labels
+  labs(y = "Bootstraped 400 subpops", x = "Whole population", 
+       subtitle = "CLR") + 
+  #guides(shape = FALSE) +
+  theme_minimal()
+clr_plot_400
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Save the plot to the current working directory
+ggsave("results/clr_plot_400.png", plot = clr_plot_400)
+
+```
+
+## NCD
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Get the results from the heavy lifting done in R apocrita
+from_apocrita_400 <- read.table("results/Master_ncd05_combined_400.txt", header = TRUE)
+from_apocrita_400$candens <- as.factor(from_apocrita_400$candens) 
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Information for ggplot annotation
+gene1 <- subset(from_apocrita_400, gene == "LOC105207562")
+gene2 <- subset(from_apocrita_400, gene == "LOC105200045")
+gene3 <- subset(from_apocrita_400, gene == "LOC105202344")
+gene4 <- subset(from_apocrita_400, gene == "LOC105199771")
+
+three_genes <- rbind(gene1, gene4)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ncd_plot_400 <- ggplot(from_apocrita_400 %>% arrange(candens), 
+       aes(x = ncd05, y = mean_ncd05, colour = sd_ncd05)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.1, nudge_y = -0.009, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_c(option = "C", direction = 1, name = "sd ncd") + 
+  #Change axis labels
+  labs(y = "Bootstraped 400 subpops", x = "Whole population", 
+       subtitle = "NCD") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+ncd_plot_400
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ ggplot(from_apocrita_400 %>% subset(gene != "LOC105199771") %>%arrange(candens), 
+       aes(x = ncd05, y = mean_ncd05, colour = sd_ncd05)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = gene1, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.01, nudge_y = -0.001, direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_c(option = "C", direction = 1, name = "sd ncd") + 
+  #Change axis labels
+  labs(y = "Bootstraped 400 subpops", x = "Whole population", 
+       subtitle = "NCD no heparan") +
+  #guides(shape = FALSE) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Save the plot to the current working directory
+ggsave("results/ncd_plot_400.png", plot = ncd_plot_400)
+
+```
+
+## Density
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Get the results from the heavy lifting done in R apocrita
+from_apocrita_400 <- read.table("results/Master_density_combined_400.txt", header = TRUE)
+from_apocrita_400$candens <- as.factor(from_apocrita_400$candens) 
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Information for ggplot anotation
+gene1 <- subset(from_apocrita_400, gene == "LOC105207562")
+gene2 <- subset(from_apocrita_400, gene == "LOC105200045")
+gene3 <- subset(from_apocrita_400, gene == "LOC105202344")
+gene4 <- subset(from_apocrita_400, gene == "LOC105199771")
+
+three_genes <- rbind(gene1, gene4)
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+density_plot_400 <- ggplot(from_apocrita_400 %>% arrange(clr), 
+       aes(x = density, y = mean_density, colour = sd_density, shape = candens)) +
+  geom_point(size = 3, alpha = 0.6) +
+  # Adding linear regression line
+##  geom_smooth(method = "lm", se = TRUE, color = "grey") +  
+  # Add names to selected points
+  geom_label_repel(data = three_genes, aes(label = gene), colour = "black",
+                   size= 2, nudge_x = -0.0005, nudge_y = 0.002,  direction = "both",
+                   box.padding = 0.3, max.overlaps = 50) +
+  # Change colors
+  scale_colour_viridis_c(option = "C", direction = -1, name = "sd in subpops") + #, 
+                        #  labels = c("No","Yes")) + 
+  #Change axis labels
+  labs(y = "Bootstraped 400 subpops", x = "Whole population", 
+       subtitle = "Combined statistics by density") + 
+  #guides(shape = FALSE) +
+  geom_hline(yintercept = quantile(from_apocrita_400$mean_density, 0.01), 
+             linetype = "dashed", size = 0.5) +
+  geom_vline(xintercept = quantile(from_apocrita_400$density, 0.01),
+             linetype = "dashed", size = 0.5) +
+  theme_minimal()
+density_plot_400
+
+```
+
+
+From the plot above:
+The button right quadrant is very interesting as the have strong signal in both all- and bootstrap-subpopultaion samples.
+The quadrant made by the top 1% lines is a subset of our original candidate genes.
+The show the stronger signal on the bootstrap analysis.
+
+
+## 4 Real populations vs reshuffleted samples
+
+
+
+
