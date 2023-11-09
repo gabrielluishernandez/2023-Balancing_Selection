@@ -84,9 +84,80 @@ ggplot(density_100_sets %>% arrange(shuffled_pops_mean100) %>% arrange(candens),
   labs(y = "Mean of shuffled 400 locations", x = "Mean four original locations", 
   ) + 
   guides(shape = FALSE) +
-  theme_minimal()
+  theme_minimal(base_size = 15)
 
 ```
+
+Immune genes
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+density_100_sets$immune <- as.factor(density_100_sets$immune)
+ggplot(density_100_sets %>% arrange(candens) %>% arrange(immune),
+       aes(x = 1-Mean_RealPops_density, y = 1-shuffled_pops_mean100, shape = candens,
+           colour = immune)) +
+  geom_point(size = 4, alpha = 0.6)+
+  scale_colour_viridis_d(option = "F", direction = -1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(y = "Mean of shuffled 400 locations", x = "Mean four original locations", 
+  ) + 
+  guides(shape = FALSE) +
+  theme_minimal(base_size = 15)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+density_100_sets$immune <- as.factor(density_100_sets$immune)
+ggplot(density_100_sets %>% arrange(candens) %>% arrange(immune)%>% subset(candens ==1),
+       aes(x = 1-Mean_RealPops_density, y = 1-shuffled_pops_mean100, shape = candens,
+           colour = immune)) +
+  geom_point(size = 4, alpha = 0.6)+
+  scale_colour_viridis_d(option = "F", direction = -1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(y = "Mean of shuffled 400 locations", x = "Mean four original locations", 
+  ) + 
+  guides(shape = FALSE) +
+  theme_minimal(base_size = 15)
+
+```
+
+
+BUSCO genes 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+density_100_sets$hymenop <- as.factor(density_100_sets$hymenop)
+ggplot(density_100_sets %>% arrange(candens) %>% arrange(hymenop) %>% subset(candens ==1),
+       aes(x = 1-Mean_RealPops_density, y = 1-shuffled_pops_mean100, shape = candens,
+           colour = hymenop)) +
+  geom_point(size = 4, alpha = 0.6)+
+  scale_colour_viridis_d(option = "C", direction = -1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(y = "Mean of shuffled 400 locations", x = "Mean four original locations", 
+  ) + 
+  guides(shape = FALSE) +
+  theme_minimal(base_size = 15)
+
+```
+
+Drosophila genes
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+density_100_sets$drosophila <- as.factor(density_100_sets$drosophila)
+ggplot(density_100_sets %>% arrange(candens) %>% arrange(drosophila),
+       aes(x = 1-Mean_RealPops_density, y = 1-shuffled_pops_mean100, shape = candens,
+           colour = drosophila)) +
+  geom_point(size = 4, alpha = 0.6)+
+  scale_colour_viridis_d(option = "B", direction = -1) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")+
+  #Change axis labels
+  labs(y = "Mean of shuffled 400 locations", x = "Mean four original locations", 
+  ) + 
+  guides(shape = FALSE) +
+  theme_minimal(base_size = 15)
+
+```
+
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
