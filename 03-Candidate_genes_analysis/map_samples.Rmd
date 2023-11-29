@@ -1,0 +1,499 @@
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+library(ggmap)
+library(scales)
+library(ggtext)
+library(ggmap)
+library(scales) 
+library(ggtext)
+library(ggrepel)
+library(gridExtra)
+
+```
+
+
+```{r echo=FALSE, message=FALSE}
+
+inputINV <- read.csv("input/Samples_genotypes_map.csv", header = TRUE, fill = TRUE)
+mylocation2 <- c(left = -70, bottom = -36.5, right = -37, top = -16)
+map4 <- get_stamenmap(mylocation2, zoom = 5, maptype = "toner-lite")
+map5 <- get_stamenmap(mylocation2, zoom = 5, maptype = "terrain")
+
+```
+
+### Colour = Monogyne or Polygyne
+### Shape = Supergene varian: bigB or littleb 
+
+#### No jitter
+
+```{r echo=FALSE, warning=FALSE}
+# Arranged descending by species. Otherwise invicta would be on top of everything
+
+map1 <- (ggmap(map4, extent = "device") + 
+          geom_point(data = inputINV  %>% arrange(desc(Species)),
+  aes(x = Longitude, y = Latitude, color = Social_form, stroke = 0.9, shape = Superge),
+  size = 4, width = 0.6, height = 0.4, alpha = 0.6, shape = 18) +  
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")) 
+
+map1 <- map1 + scale_colour_viridis_d( option = "D") +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+
+map1
+
+```
+
+#### Jitter
+
+```{r echo=FALSE, warning=FALSE}
+# Arranged descending by species. Otherwise invicta would be on top of everything
+
+map2 <- (ggmap(map4, extent = "device") + 
+          geom_jitter(data = inputINV %>% 
+                        subset(Social_form != "NA") %>% 
+                        arrange(Sample_name),
+  aes(x = Longitude, y = Latitude, color = Social_form, stroke = 0.9, 
+      shape = Superge),
+  size = 5, width = 0.6, height = 0.4, alpha = 0.6) +   
+  guides(fill = FALSE, alpha = FALSE, size = FALSE)) 
+
+map2 <- map2 + 
+  scale_colour_manual(values = c("#3D2D5D", "#F3651D"), name = "Social form") +
+  scale_shape_discrete(labels = c("SB","Sb"), name = "Genotype")+
+  theme(legend.text = element_markdown(size = 8), 
+        legend.title = element_text(size = 9), 
+        base_size = 15) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+map2
+```
+
+ 
+```{r echo=FALSE, warning=FALSE}
+# Arranged descending by species. Otherwise invicta would be on top of everything
+
+map3 <- (ggmap(map5, extent = "device") + 
+          geom_jitter(data = inputINV %>% arrange(desc(Species)),
+  aes(x = Longitude, y = Latitude, color = Social_form, stroke = 0.9, shape = Superge),
+  size = 6, width = 0.6, height = 0.4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")
+) 
+
+map3 <- map3 + scale_colour_viridis_d( option = "D") +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+map3
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+grid.arrange(map1, map2, ncol = 2)
+
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+
+map1 <- (ggmap(map4, extent = "device") + 
+          geom_point(data = inputINV %>% subset(Social_form == "M"),
+  aes(x = Longitude, y = Latitude, color = Social_form, stroke = 0.9, shape = Superge),
+  size = 6, width = 0.6, height = 0.4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type"))
+
+map1 <- map1 + scale_colour_viridis_d( option = "D") +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+
+map1
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+map1 <- (ggmap(map4, extent = "device") + 
+          geom_jitter(data = inputINV %>% subset(Social_form == "M"),
+  aes(x = Longitude, y = Latitude, color = Social_form, shape = Superge),
+  size = 6, width = 0.6, height = 0.4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type"))
+
+map1 <- map1 + scale_colour_viridis_d( option = "D") +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+
+map1
+
+```
+
+# Populations 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#subset(inputINV, Social_form == "M")
+#mono_all <- inputINV
+inputINV$pops <- "0" 
+
+for(i in 1:nrow(inputINV)) {                     
+  if(is.na(inputINV$Sample_name[i])){
+    next
+  }
+  if(inputINV$Latitude[i] < -19.5 & inputINV$Latitude[i] > -21){
+    inputINV$pops[i]  <- "1"
+  }
+  if(inputINV$Latitude[i] < -22 & inputINV$Latitude[i] > -27 & 
+     inputINV$Longitude[i] < -57 & inputINV$Longitude[i] > -59 ){
+    inputINV$pops[i]  <- "2"
+  }
+  if(inputINV$Latitude[i] < -27 & inputINV$Latitude[i] > -28 & 
+     inputINV$Longitude[i] < -58 & inputINV$Longitude[i] > -59 ){
+    inputINV$pops[i]  <- "3"
+  }
+  if(inputINV$Latitude[i] < -28 & inputINV$Latitude[i] > -30 & 
+     inputINV$Longitude[i] < -59 & inputINV$Longitude[i] > -61 ){
+    inputINV$pops[i]  <- "4"
+  }
+}
+
+inputINV$pops <- as.factor(inputINV$pops)
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+pops1 <- (ggmap(map4, extent = "device") + 
+          geom_point(data = inputINV ,
+  aes(x = Longitude, y = Latitude, color = pops),
+  size = 4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")) 
+
+pops1 <- pops1 + scale_colour_viridis_d( option = "D") +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+pops1
+```
+```{r echo=FALSE, warning=FALSE}
+
+pops1 <- (ggmap(map4, extent = "device") + 
+          geom_jitter(data = inputINV %>% subset(pops != "0"),
+  aes(x = Longitude, y = Latitude, color = pops),
+  size = 4, alpha = 0.6, width = 0.6, height = 0.2) +
+    #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")) 
+
+pops1 <- pops1 + scale_colour_viridis_d(option = "D", name = "Subpopulations") +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+pops1
+
+# I dont like this one because then we would need to talk about these four and 
+# ignore the loci from the big analysis (all the other samples)
+```
+```{r echo=FALSE, warning=FALSE}
+
+pops1 <- (ggmap(map4, extent = "device") + 
+          geom_jitter(data = inputINV,
+  aes(x = Longitude, 
+      y = Latitude, 
+      color = pops),
+  size = 4, 
+  alpha = 0.6, 
+  width = 0.6, 
+  height = 0.4
+  ) + 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")) 
+
+pops1 <- pops1 + 
+  scale_colour_viridis_d(option = "D", name = "Population", labels = c("All", "1", "2", "3", "4")) +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+pops1
+
+ 
+```
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+nrow(subset(inputINV, pops == "0"))
+nrow(subset(inputINV, pops == "1"))
+nrow(subset(inputINV, pops == "2"))
+nrow(subset(inputINV, pops == "3"))
+nrow(subset(inputINV, pops == "4"))
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+# names_pop3 <- subset(inputINV, pops == "1")
+# 
+# write.table(names_pop3$Sample_name, 
+#             "../gitstuff/2023-Balaning_Selection/01-BLS-genome_scan/2023_08_02_Pop1_sample_name.txt", 
+#             quote = FALSE, 
+#             col.names = FALSE, 
+#             row.names = FALSE)
+
+```
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+# 
+# names_pop3 <- subset(inputINV, pops == "2")
+# 
+# write.table(names_pop3$Sample_name, 
+#             "../gitstuff/2023-Balaning_Selection/01-BLS-genome_scan/2023_08_02_Pop2_sample_name.txt", 
+#             quote = FALSE, 
+#             col.names = FALSE, 
+#             row.names = FALSE)
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+# names_pop3 <- subset(inputINV, pops == "3")
+# 
+# write.table(names_pop3$Sample_name, 
+#             "../gitstuff/2023-Balaning_Selection/01-BLS-genome_scan/2023_08_02_Pop3_sample_name.txt", 
+#             quote = FALSE,
+#             col.names = FALSE, 
+#             row.names = FALSE)
+
+```
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+# 
+# names_pop4 <- subset(inputINV, pops == "4")
+# 
+# write.table(names_pop4$Sample_name, 
+#             "../gitstuff/2023-Balaning_Selection/01-BLS-genome_scan/2023_08_04_Pop4_sample_name.txt", 
+#             quote = FALSE, 
+#             col.names = FALSE, 
+#             row.names = FALSE)
+
+```
+
+###Poly
+
+```{r echo=FALSE, warning=FALSE}
+
+map1 <- (ggmap(map4, extent = "device") + 
+          geom_point(data = inputINV %>% subset(Social_form == "P"),
+  aes(x = Longitude, y = Latitude, color = Social_form, stroke = 0.9, shape = Superge),
+  size = 6, width = 0.6, height = 0.4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")
+) 
+
+map1 <- map1 + scale_colour_viridis_d( option = "D", direction = 1) +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+
+#map1
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+map1 <- (ggmap(map4, extent = "device") + 
+          geom_jitter(data = inputINV %>% subset(Social_form == "P"),
+  aes(x = Longitude, y = Latitude, color = Social_form, shape = Superge),
+  size = 6, width = 0.6, height = 0.4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")
+) 
+
+map1 <- map1 + scale_colour_viridis_d( option = "D", direction = 1) +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+
+#map1
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+poly_all <- subset(inputINV, Social_form == "P")
+poly_all$pops <- "0" 
+
+for(i in 1:nrow(poly_all)) {                     
+  if(is.na(poly_all$Sample_name[i])){
+    next
+  }
+  if(poly_all$Latitude[i] < -17 & poly_all$Latitude[i] > -21){
+    poly_all$pops[i]  <- "1"
+  }
+  if(poly_all$Latitude[i] < -22 & poly_all$Latitude[i] > -27 & 
+     poly_all$Longitude[i] < -57 & poly_all$Longitude[i] > -59 ){
+    poly_all$pops[i]  <- "2"
+  }
+  if(poly_all$Latitude[i] < -27 & poly_all$Latitude[i] > -27.5 & 
+     poly_all$Longitude[i] < -57 & poly_all$Longitude[i] > -59 ){
+    poly_all$pops[i]  <- "3"
+  }
+  if(poly_all$Latitude[i] < -32 & poly_all$Latitude[i] > -35 & 
+     poly_all$Longitude[i] < -60 & poly_all$Longitude[i] > -74 ){
+    poly_all$pops[i]  <- "4"
+  }
+  if(poly_all$Latitude[i] < -29.9 & poly_all$Latitude[i] > -35 & 
+     poly_all$Longitude[i] < -63 & poly_all$Longitude[i] > -74 ){
+    poly_all$pops[i]  <- "4"
+  }
+}
+
+poly_all$pops <- as.factor(poly_all$pops)
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+pops1 <- (ggmap(map4, extent = "device") + 
+          geom_point(data = poly_all ,
+  aes(x = Longitude, y = Latitude, color = pops),
+  size = 4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+  guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")) 
+
+pops1 <- pops1 + scale_colour_viridis_d( option = "D") +
+  theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+#pops1
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+nrow(subset(poly_all, pops == "1"))
+nrow(subset(poly_all, pops == "2"))
+nrow(subset(poly_all, pops == "3"))
+nrow(subset(poly_all, pops == "4"))
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+# ## get pops
+# 
+# mono_01 <- subset(mono_all, pops == "1")
+# mono_02 <- subset(mono_all, pops == "2")
+# mono_03 <- subset(mono_all, pops == "3")
+# mono_04 <- subset(mono_all, pops == "4")
+# 
+# poly_01 <- subset(poly_all, pops == "1")
+# poly_02 <- subset(poly_all, pops == "2")
+# poly_03 <- subset(poly_all, pops == "3")
+# poly_04 <- subset(poly_all, pops == "4")
+
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+
+# write.table(sort(mono_01$Sample_name), "tmp/mono_pop_01.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+# 
+# write.table(sort(mono_02$Sample_name), "tmp/mono_pop_02.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+# 
+# write.table(sort(mono_03$Sample_name), "tmp/mono_pop_03.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+# 
+# write.table(sort(mono_04$Sample_name), "tmp/mono_pop_04.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+# write.table(sort(poly_01$Sample_name), "tmp/poly_pop_01.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+# 
+# write.table(sort(poly_02$Sample_name), "tmp/poly_pop_02.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+# 
+# write.table(sort(poly_03$Sample_name), "tmp/poly_pop_03.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+# 
+# write.table(sort(poly_04$Sample_name), "tmp/poly_pop_04.txt", quote = FALSE, 
+#             col.names = FALSE, row.names = FALSE)
+
+
+```
+
+-----
+
+```{r echo=FALSE, warning=FALSE}
+
+
+# map1 <- (ggmap(map4, extent = "device") + 
+#           geom_point(data = inputINV %>% subset(Social_form == "UnK"),
+#   aes(x = Longitude, y = Latitude, color = Social_form, stroke = 0.9, shape = Superge),
+#   size = 6, width = 0.6, height = 0.4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+#   guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")
+# ) 
+# 
+# map1 <- map1 + scale_colour_viridis_d( option = "D", direction = -1) +
+#   theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+#   theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+
+#map1
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# inputINV$pops <- "0"
+# 
+# for(i in 1:nrow(inputINV)) {                     
+#   if(is.na(inputINV$Sample_name[i])){
+#     next
+#   }
+#   if(inputINV$Latitude[i] < -17 & inputINV$Latitude[i] > -21){
+#     inputINV$pops[i]  <- "1"
+#   }
+#   if(inputINV$Latitude[i] < -22 & inputINV$Latitude[i] > -28 & 
+#      inputINV$Longitude[i] < -57 & inputINV$Longitude[i] > -59 ){
+#     inputINV$pops[i]  <- "2"
+#   }
+# }
+# 
+# inputINV$pops <- as.factor(inputINV$pops)
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+# Color pops
+
+# pops1 <- (ggmap(map4, extent = "device") + 
+#           geom_point(data = inputINV ,
+#   aes(x = Longitude, y = Latitude, color = pops, stroke = 0.9, shape = Superge),
+#   size = 6, width = 0.6, height = 0.4, alpha = 0.6) +  #, width = 0.6, height = 0.4 alpha = 0.6, 
+#   guides(fill = FALSE, alpha = FALSE, size = FALSE) + labs(shape = "Type")
+# ) 
+# 
+# pops1 <- pops1 + scale_colour_viridis_d( option = "D") +
+#   theme(legend.text = element_markdown(size = 8), legend.title = element_text(size = 9)) +
+#   theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm")) 
+# pops1
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+# nrow(subset(inputINV, pops == "1"))
+# nrow(subset(inputINV, pops == "2"))
+# 
+# pop_north <- subset(inputINV, pops == "1")
+# pop_south <- subset(inputINV, pops == "2") %>% dplyr::sample_n(24)
+
+#I randomlly seleted 24 out of the 99 in pop_south
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+#write.table(sort(pop_north$Sample_name), "tmp/pop_north_samples.txt", quote = FALSE, 
+ #           col.names = FALSE, row.names = FALSE)
+
+#write.table(sort(pop_south$Sample_name), "tmp/pop_south_samples.txt", quote = FALSE, 
+ #           col.names = FALSE, row.names = FALSE)
+```

@@ -1,0 +1,235 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+#load("~/apocrita/2023-03-17-Caste_expression/common_tissues_caste_degs.RData")
+
+bias_and_all <- read.table('results/2023_04_17_Dens_canditates.txt',
+                             header = TRUE) 
+#bias_and_all$density <- bias_and_all$density*-1
+
+#bias_and_all$immune <- as.factor(as.numeric(bias_and_all$immune))
+bias_and_all$candens <- as.factor(as.numeric(bias_and_all$candens))
+
+hyme_genes <- read.table('input/proteins_Hymenoptera_LOC.txt', header = FALSE)
+bias_and_all$hymenop <- bias_and_all$gene %in% hyme_genes$V1
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop*1)
+
+#supergene_genes <- read.table('input/supergenes_LOC.txt', header = FALSE)
+#bias_and_all$super <- bias_and_all$gene %in% supergene_genes$V1
+#bias_and_all$super <- as.factor(bias_and_all$super*1) 
+
+ase_genes <- read.table('input/consistent_AS_genes.txt', header = FALSE)
+bias_and_all$ASE <- bias_and_all$gene %in% ase_genes$V1
+bias_and_all$ASE <- as.factor(bias_and_all$ASE*1)
+
+ors_genes <- read.table('input/LOCs_for_ORs.txt', header = FALSE)
+bias_and_all$ORs <- bias_and_all$gene %in% ors_genes$V1
+bias_and_all$ORs <- as.factor(bias_and_all$ORs*1)
+
+rm(hyme_genes, ase_genes, ors_genes)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+nrow(subset(bias_and_all, ORs == "1") %>% subset(candens != "0"))
+subset(bias_and_all, ORs == "1") %>% subset(candens != "0")
+candidate_ORs <- subset(bias_and_all, ORs == "1") %>% subset(candens != "0")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(ORs), 
+       aes(clr, ncd05, shape = candens, colour = ORs )) + 
+  geom_jitter(alpha = 0.6, size =5) + 
+  geom_label_repel(data = candidate_ORs, aes(label = gene), colour = "black",
+                   size=2, nudge_x = 10, nudge_y = -0.001) +
+  scale_colour_viridis_d(option = "E", direction = 1, labels = c("No","Yes")) +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(20,18), labels = c("No-BLS", "BLS")) +
+  theme_minimal()
+
+```
+
+
+
+
+## Overrepresentation?
+#### The wilcoxon test is just saying that the means are different between groups.
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+ggplot(bias_and_all, aes(x=ORs, y=(density*-1), fill=ORs)) +
+  geom_violin(trim = TRUE) + geom_boxplot(width=0.1, fill="white") +
+ # labs(x = "Non BUSCO (7963) vs BUSCO 5661 genes", y = "CLR") + 
+  stat_compare_means(method = "wilcox.test", label.x = 1.3, label.y = -0.0047) +
+  theme_minimal() 
+ 
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+fisher_ors <- data.frame(
+ "NoBLS" = c(nrow(subset(bias_and_all, ORs == "0") %>% subset(candens == "0")), 
+            nrow(subset(bias_and_all, ORs == "1") %>% subset(candens == "0"))),
+ "BLS" = c(nrow(subset(bias_and_all, ORs == "0") %>% subset(candens != "0")), 
+            nrow(subset(bias_and_all, ORs == "1") %>% subset(candens != "0"))),
+  row.names = c("No-OR", "OR"),
+  stringsAsFactors = FALSE
+)
+
+fisher_ors
+
+fisher.test(fisher_ors)
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+  
+no_ors <- subset(bias_and_all, ORs == "0")
+yes_ors <- subset(bias_and_all, ORs == "1")
+
+ks.test(no_ors$clr, yes_ors$clr)
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+
+
+#Perform the Wilcoxon rank-sum test
+result <- wilcox.test(yes_ors$density, no_ors$density, alternative = "greater")
+result
+
+result <- wilcox.test(no_ors$density, yes_ors$density, alternative = "greater")
+result
+
+#print(result$p.value)
+
+result <- wilcox.test(yes_ors$density, no_ors$density, alternative = "two.sided")
+result
+
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+ggplot() +
+  geom_density(data = subset(bias_and_all,ORs == "1"), 
+               aes(x = density, fill = "ORs"), alpha = 0.5) +
+  geom_density(data = subset(bias_and_all,ORs == "0"), 
+               aes(x = density, fill = "No-ORs"), alpha = 0.5) +
+  xlab("BLS") + ylab("Density Estimate") + theme_minimal() +
+  scale_fill_manual(values = c("blue", "red"), name = "Data Source", labels = c("ORs", "No-ORs"))
+
+#%>% subset(density > -0.008)
+```
+#¢#############################33
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Subset ORs in the same chromosome as LOC105193951 (CM031907.1) SNP 5638348
+nrow(subset(bias_and_all, ORs == "1") %>% subset(chr == "CM031907.1"))
+
+#summary(subset(bias_and_all, ORs == "1") %>% subset(chr == "CM031907.1"))
+
+ors_chr7 <- subset(bias_and_all, ORs == "1") %>% subset(chr == "CM031907.1") %>%
+  arrange(snp) %>% arrange(density)
+
+random_or_chr7 <- ors_chr7[sample(nrow(ors_chr7), 10), ]
+
+random_or_chr7$gene
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Subset ORs in the same chromosome of LOC113003310 (CM031907.1) SNP 16566416
+nrow(subset(bias_and_all, ORs == "1") %>% subset(chr == "CM031901.1"))
+
+ors_chr1 <- subset(bias_and_all, ORs == "1") %>% subset(chr == "CM031901.1") %>%
+  arrange(snp) %>% arrange(density)
+
+random_or_chr1 <- ors_chr1[sample(nrow(ors_chr1), 10), ]
+
+random_or_chr1$gene
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#This are clusters from the phylogenetic tree LOC105193951
+cluster1 <- as.data.frame(c("LOC113003676", "LOC113003665","LOC105193951",
+                            "LOC113003679","LOC113003685","LOC105193950",
+                            "LOC105193975"))
+# Get the current column names
+current_names <- names(cluster1)
+# Find the index of the column you want to rename
+column_index <- which(current_names == current_names)
+# Assign a new name to the column
+names(cluster1)[column_index] <- "gene"
+rm(current_names)
+rm(column_index)
+
+bias_and_all$or_clust1 <- bias_and_all$gene %in% cluster1$gene
+bias_and_all$or_clust1 <- as.factor(bias_and_all$or_clust1*1)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(or_clust1), 
+       aes(clr, ncd05, shape = candens, colour = or_clust1 )) + 
+  geom_jitter(alpha = 0.6, size =5) + 
+  #geom_label_repel(data = candidate_ORs, aes(label = gene), colour = "black",
+   #                size=2, nudge_x = 10, nudge_y = -0.001) +
+  scale_colour_viridis_d(option = "E", direction = 1, labels = c("No","Yes")) +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(19, 15, 17), labels = c("No BLS", "Top 60", "Top 20")) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#This are clusters from the phylogenetic tree LOC113003310
+cluster2 <- as.data.frame(c("LOC113003310", "LOC113003304","LOC113003305"))
+
+# Get the current column names
+current_names <- names(cluster2)
+# Find the index of the column you want to rename
+column_index <- which(current_names == current_names)
+# Assign a new name to the column
+names(cluster2)[column_index] <- "gene"
+rm(current_names)
+rm(column_index)
+
+bias_and_all$or_clust2 <- bias_and_all$gene %in% cluster2$gene
+bias_and_all$or_clust2 <- as.factor(bias_and_all$or_clust2*1)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(or_clust2), 
+       aes(clr, ncd05, shape = candens, colour = or_clust2)) + 
+  geom_jitter(alpha = 0.6, size =5) + 
+  #geom_label_repel(data = candidate_ORs, aes(label = gene), colour = "black",
+   #                size=2, nudge_x = 10, nudge_y = -0.001) +
+  scale_colour_viridis_d(option = "E", direction = 1, labels = c("No","Yes")) +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(19, 15, 17), labels = c("No BLS", "Top 60", "Top 20")) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+nrow(subset(bias_and_all, ORs == "1"))
+nrow(subset(bias_and_all, ORs == "1") %>% subset(hymenop == "1") )
+
+
+```

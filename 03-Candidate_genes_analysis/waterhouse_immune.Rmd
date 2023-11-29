@@ -1,0 +1,83 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+bias_and_all <- read.table('results/2023_04_17_Dens_canditates.txt',
+                             header = TRUE) 
+#bias_and_all$density <- bias_and_all$density*-1
+bias_and_all$immune <- as.factor(as.numeric(bias_and_all$immune))
+bias_and_all$candens <- as.factor(as.numeric(bias_and_all$candens))
+
+waterhouse_genes <- read.table('input/Invicta_immune_from_dm.txt', header = FALSE)
+waterhouse_mosquito <- read.table('input/Invicta_immune_from_ag.txt', header = FALSE)
+my_list_imm <- read.table('input/All_immune_437.txt', header = FALSE)
+
+all_immune <- as.data.frame(union(union(my_list_imm$V1, waterhouse_genes$V1), 
+                                      waterhouse_mosquito$V1))
+names(all_immune)[1] <- "immunity_new"
+
+bias_and_all$immune_new <- bias_and_all$gene %in% all_immune$immunity_new
+bias_and_all$immune_new <- as.factor(bias_and_all$immune_new*1)
+
+candidate_immune <- subset(bias_and_all, immune_new == "1") %>% subset(candens != "0")
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(immune_new), 
+       aes(clr, 1-ncd05, shape = candens, colour = immune_new )) + 
+  geom_jitter(alpha = 0.6, size = 8) + 
+  geom_label_repel(data = candidate_immune, 
+                   aes(label = gene), colour = "black",
+                   size= 5, nudge_x = 17, nudge_y = 0.01) +
+  scale_colour_viridis_d(option = "E", 
+                         direction = -1, 
+                         name = "Immune", 
+                         labels = c("No","Yes")) +
+  labs(shape = "Candidates") + 
+  xlab("B0-MAF") + 
+  ylab("NCD1") + 
+  scale_shape_manual(values = c(16, 17), 
+                     labels = c("No-BLS", "BLS")) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text = element_text(size = 20))
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+subset(bias_and_all, candens == "1") %>% subset(immune_new == "1")
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+fisher_ors <- data.frame(
+ "NoBLS" = c(nrow(subset(bias_and_all, immune_new == "0") %>% subset(candens == "0")), 
+            nrow(subset(bias_and_all, immune_new == "1") %>% subset(candens == "0"))),
+ "BLS" = c(nrow(subset(bias_and_all, immune_new == "0") %>% subset(candens != "0")), 
+            nrow(subset(bias_and_all, immune_new == "1") %>% subset(candens != "0"))),
+  row.names = c("No-Immune", "Immune"),
+  stringsAsFactors = FALSE
+)
+
+fisher_ors
+
+fisher.test(fisher_ors)
+
+```

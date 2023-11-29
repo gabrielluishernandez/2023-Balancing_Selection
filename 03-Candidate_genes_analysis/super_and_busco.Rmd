@@ -1,0 +1,117 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+library(MASS)
+
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+bias_and_all <- read.table('results/2023_04_17_Dens_canditates.txt',
+                             header = TRUE) 
+#bias_and_all <- subset(bias_and_all, chr != "CM031916.1")
+bias_and_all$candens <- as.factor(bias_and_all$candens) 
+
+bias_and_all$immune <- as.factor(as.numeric(bias_and_all$immune))
+
+```
+
+
+#### Supergene
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+supergene_genes <- read.table('input/supergenes_LOC.txt', header = FALSE)
+
+bias_and_all$super <- bias_and_all$gene %in% supergene_genes$V1
+bias_and_all$super <- as.factor(bias_and_all$super*1) 
+
+
+subsuperge <-subset(bias_and_all, super =="1")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+super1 <- ggplot(bias_and_all %>% arrange(super)) + 
+  geom_point(aes(clr, ncd05, colour = super, shape = candens ), alpha = 0.7, size =4) +
+  scale_colour_viridis_d(option = "D", direction = 1) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+super2 <- ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(super)) + 
+  geom_point(aes(clr, ncd05, colour = super, shape = candens ), alpha = 0.7, size =4) +
+  scale_colour_viridis_d(option = "D", direction = 1,labels = c('No-Supergene', 'Supergene')) +
+   geom_curve(aes(x = 3, y = 0.432, xend = 39, yend = 0.495), curvature = 0.4) +
+  geom_curve(aes(x = 3, y = 0.451, xend = 25, yend = 0.495), curvature = 0.55) +
+  theme_minimal()
+super2 
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+grid.arrange(super1, super2, ncol =1)
+
+```
+
+#### BUSCO
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+busco_genes <- read.table('input/busco_genes_LOC.txt', header = FALSE)
+
+bias_and_all$busco <- bias_and_all$gene %in% busco_genes$V1
+bias_and_all$busco <- as.factor(bias_and_all$busco*1) 
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+busco1 <- ggplot(bias_and_all %>% arrange(busco)) + 
+  geom_point(aes(clr, ncd05, colour = busco, shape = candens), alpha = 0.6, size =3) +
+  scale_color_manual(values=c("#93baa3", "#531B21")) +
+  #scale_colour_viridis_d(option = "C", direction = 1) +
+  theme_minimal()
+
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+busco2 <-ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(busco)) + 
+  geom_point(aes(clr, ncd05, colour = busco, shape = candens), alpha = 0.6, size =3) +
+  scale_color_manual(values=c("#93baa3", "#531B21")) +
+  geom_curve(aes(x = 3, y = 0.432, xend = 39, yend = 0.495), curvature = 0.4) +
+  geom_curve(aes(x = 3, y = 0.451, xend = 25, yend = 0.495), curvature = 0.55) +
+  #scale_colour_viridis_d(option = "C", direction = 1) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+grid.arrange(busco1, busco2, ncol =1)
+
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+immuneplot <-ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(immune)) + 
+  geom_point(aes(clr, ncd05, colour = immune, shape = candens), alpha = 0.6, size =3) +
+  scale_colour_viridis_d(option = "C", direction = 1,labels = c('No-immune', 'Immune')) +
+  geom_curve(aes(x = 3, y = 0.432, xend = 39, yend = 0.495), curvature = 0.4) +
+  geom_curve(aes(x = 3, y = 0.451, xend = 25, yend = 0.495), curvature = 0.55) +
+  #scale_colour_viridis_d(option = "C", direction = 1) +
+  theme_minimal()
+
+immuneplot
+```
+

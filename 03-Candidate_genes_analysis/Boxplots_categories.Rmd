@@ -1,0 +1,797 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+#load("~/apocrita/2023-03-17-Caste_expression/common_tissues_caste_degs.RData")
+#2023_04_17_Dens_canditates.txt
+bias_and_all <- read.table('results/2023-Master_table.txt',
+                             header = TRUE) 
+
+#bias_and_all$immune <- as.factor(as.numeric(bias_and_all$immune))
+bias_and_all$candens <- as.factor(as.numeric(bias_and_all$candens))
+bias_and_all$chr <- as.factor(bias_and_all$chr)
+#bias_and_all <- bias_and_all[-3223, ]
+
+bias_and_all$facet2 <- "0"
+
+for(i in 1:nrow(bias_and_all)) {                     
+  if(is.na(bias_and_all$chr[i])){
+    next
+  }
+  if(bias_and_all$chr[i] == "CM031901.1"){
+    bias_and_all$facet2[i]  <- "01"
+  }
+  if(bias_and_all$chr[i] == "CM031902.1"){
+    bias_and_all$facet2[i]  <- "02"
+  }
+  if(bias_and_all$chr[i] == "CM031903.1"){
+    bias_and_all$facet2[i]  <- "03"
+  }
+  if(bias_and_all$chr[i] == "CM031904.1"){
+    bias_and_all$facet2[i]  <- "04"
+  }
+  if(bias_and_all$chr[i] == "CM031905.1"){
+    bias_and_all$facet2[i]  <- "05"
+  }
+  if(bias_and_all$chr[i] == "CM031906.1"){
+    bias_and_all$facet2[i]  <- "06"
+  }
+  if(bias_and_all$chr[i] == "CM031907.1"){
+    bias_and_all$facet2[i]  <- "07"
+  }
+  if(bias_and_all$chr[i] == "CM031908.1"){
+    bias_and_all$facet2[i]  <- "08"
+  }
+  if(bias_and_all$chr[i] == "CM031909.1"){
+    bias_and_all$facet2[i]  <- "09"
+  }
+  if(bias_and_all$chr[i] == "CM031910.1"){
+    bias_and_all$facet2[i]  <- "10"
+  }
+  if(bias_and_all$chr[i] == "CM031911.1"){
+    bias_and_all$facet2[i]  <- "11"
+  }
+  if(bias_and_all$chr[i] == "CM031912.1"){
+    bias_and_all$facet2[i]  <- "12"
+  }
+  if(bias_and_all$chr[i] == "CM031913.1"){
+    bias_and_all$facet2[i]  <- "13"
+  }
+  if(bias_and_all$chr[i] == "CM031914.1"){
+    bias_and_all$facet2[i]  <- "14"
+  }
+  if(bias_and_all$chr[i] == "CM031915.1"){
+    bias_and_all$facet2[i]  <- "15"
+  }
+ # if(bias_and_all$chr[i] == "CM031916.1"){
+  #  bias_and_all$facet2[i]  <- "16"
+  #}
+}
+
+bias_and_all$facet2 <- as.factor(bias_and_all$facet2)
+```
+
+### Manhattan plot
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+#from Madeline
+library(qqman)
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+
+MH_invi <- bias_and_all %>% 
+  
+  # Compute chromosome size
+  group_by(facet2) %>% 
+  summarise(chr_len=max(snp)) %>% 
+  
+  # Calculate cumulative position of each chromosome
+  mutate(tot=cumsum(chr_len)-chr_len) %>%
+  select(-chr_len) %>%
+  
+  # Add this info to the initial dataset
+  left_join(bias_and_all, ., by=c("facet2"="facet2")) %>%
+  
+  # Add a cumulative position of each SNP
+  arrange(facet2, snp) %>%
+  mutate( BPcum=snp+tot)
+
+axisdf_invi = MH_invi %>% group_by(facet2) %>% summarize(center=( max(BPcum) + min(BPcum) ) / 2 )
+
+#str(MH_invi)
+
+# SUBSET DATA TO EXTRACT THE LIST OF GEx CANDIDATE GENES TO HIGHLIGHT AND ANNOTATION
+cand.genes <- subset(MH_invi, candens != "0")
+#str(cand.genes)
+#dim(cand.genes)
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+#Genome-wide
+
+ggplot(data = MH_invi, aes(x = BPcum, y = density*-1)) +
+  geom_jitter( aes(color=as.factor(facet2)), alpha=1, size=3) +
+  scale_colour_manual(values = rep(c("#dbeec8", "#58a7aa"), 22 )) +
+ # scale_colour_viridis_d(alpha = 0.7, direction = -1, option = "C") +
+  # CUSTOM X-AXIS BASED ON CHROMOSOME LENGTHS
+  scale_x_continuous( label = axisdf_invi$facet2, breaks= axisdf_invi$center) +
+  # ADD HIGHLIGHT COLOUR TO CANDIDATE GENES/SNPS
+  geom_jitter(data = cand.genes, color = "#78518d", fill = "#78518d",  size=3,
+              shape = 21, alpha = 0.7) +
+  #geom_hline(yintercept = -0.004795945, linetype='dotted', size = 0.8)+
+  # ADD SNP/GENE ANNOTATIONS TO CANDIDATES
+ # geom_label_repel(data = cand.genes, aes(label = gene), size=2) +
+  labs(x = "Chromosome", y = "BLS combined score")+
+  theme_bw() + theme(legend.position="none", panel.border = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.ticks = element_line(colour = "black", size = 0.5),
+        axis.ticks.length = unit(0.2, "cm"))
+  
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+#Genome-wide Annotateted
+
+# SUBSET DATA TO EXTRACT THE LIST OF GEx CANDIDATE GENES TO HIGHLIGHT AND ANNOTATION
+cand.genes <- subset(MH_invi, candens != "0")
+go_genes_4 <- subset(MH_invi, gene == "LOC105196752" | gene == "LOC105196820" |
+                       gene == "LOC105198366" | gene == "LOC105206596" )
+top20_genes <- subset(MH_invi, candens == "2")
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+ggplot(data = MH_invi, aes(x = BPcum, y = density*-1)) +
+  geom_jitter( aes(color=as.factor(facet2)), alpha=1, size=1.5) +
+  scale_colour_manual(values = rep(c("#dbeec8", "#58a7aa"), 22 )) +
+# CUSTOM X-AXIS BASED ON CHROMOSOME LENGTHS
+  scale_x_continuous( label = axisdf_invi$facet2, breaks= axisdf_invi$center) +
+# ADD HIGHLIGHT COLOUR TO CANDIDATE GENES/SNPS
+  geom_jitter(data = go_genes_4, color = "#78518d", fill = "#78518d", 
+              size=3, shape = 21) +
+# ADD SNP/GENE ANNOTATIONS TO CANDIDATES
+  geom_label_repel(data = go_genes_4, aes(label = gene), nudge_x = 0.1, nudge_y = -0.001) +
+  theme_bw() + labs(x = "Chromosome", y = "Balancing Selection", 
+                    subtitle = "Genes highlighted by GO enrichment")+
+  theme(legend.position="none", panel.border = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.ticks = element_line(colour = "black", size = 0.5),
+        axis.ticks.length = unit(0.2, "cm"))
+    
+
+```
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+ggplot(data = MH_invi, aes(x = BPcum, y = density*-1)) +
+  geom_jitter( aes(color=as.factor(facet2)), alpha=1, size=1.5) +
+  scale_colour_manual(values = rep(c("#dbeec8", "#58a7aa"), 22 )) +
+# CUSTOM X-AXIS BASED ON CHROMOSOME LENGTHS
+  scale_x_continuous( label = axisdf_invi$facet2, breaks= axisdf_invi$center) +
+# ADD HIGHLIGHT COLOUR TO CANDIDATE GENES/SNPS
+  geom_jitter(data = top20_genes, color = "#78518d", fill = "#78518d", 
+              size=3, shape = 21) +
+# ADD SNP/GENE ANNOTATIONS TO CANDIDATES
+  geom_label_repel(data = top20_genes, aes(label = gene), nudge_x = 0.1, nudge_y = -0.001) +
+  theme_bw() + labs(x = "Chromosome", y = "Balancing Selection", 
+                    subtitle = "Genes highlighted by GO enrichment")+
+  theme(legend.position="none", panel.border = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.ticks = element_line(colour = "black", size = 0.5),
+        axis.ticks.length = unit(0.2, "cm"))
+    
+
+```
+
+### Distribution of candidate genes across the chromosomes. 
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+old_chro_plor <- ggplot(bias_and_all %>% arrange(candens)) +
+  geom_jitter(aes(x = snp/1e6, y = density*(-1), color = chr, shape =candens),
+             size = 1.5, alpha = 0.7) + 
+  xlab('Physical Position (Mbp)') + #ylab('B0-maf') +
+  facet_wrap("facet2", ncol = 16, scales = "free_x") + 
+  scale_colour_viridis_d(alpha = 0.7, direction = -1, option = "D",
+                         labels = c('No-Candidate','Top80','Top20')) +
+  geom_hline(yintercept = -0.0041, linetype='dotted', size = 0.8)+
+  #scale_color_manual(c("#FF0000", "#00FF00", "#0000FF"))+
+  guides(fill = FALSE, alpha = FALSE, size = FALSE, color = FALSE,
+         shape = FALSE) + 
+  #labs(color = "Gene Type") +
+  theme_minimal()+ theme(panel.grid = element_blank()) 
+
+```
+
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+chr_box <- ggplot(bias_and_all, aes(x=facet2, y=density*-1, fill=facet2)) +
+  geom_violin(trim = TRUE) + geom_boxplot(width=0.1, fill="white") +
+  geom_hline(yintercept = -0.0041, linetype='dotted', size = 0.9) +
+  scale_fill_viridis_d(option = "D", direction = -1, name = "Chromosome")+
+  guides(fill = FALSE) +
+  xlab("Chromosome") + ylab("Density score") +
+  theme_minimal()
+
+#chr_box
+```
+
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+busco_genes <- read.table('input/busco_genes_LOC.txt', header = FALSE)
+
+MH_invi$busco <- MH_invi$gene %in% busco_genes$V1
+MH_invi$busco <- as.factor(MH_invi$busco*1)
+
+
+bias_and_all$busco <- bias_and_all$gene %in% busco_genes$V1
+bias_and_all$busco <- as.factor(bias_and_all$busco*1)
+
+```
+
+
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+supergene_genes <- read.table('input/supergenes_LOC.txt', header = FALSE)
+
+bias_and_all$super <- bias_and_all$gene %in% supergene_genes$V1
+bias_and_all$super <- as.factor(bias_and_all$super*1) 
+
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+kegg_genes <- read.table('input/LOC_ids_from_195_results.txt', header = FALSE)
+
+bias_and_all$kegg <- bias_and_all$gene %in% kegg_genes$V1
+bias_and_all$kegg <- as.factor(bias_and_all$kegg*1) 
+
+```
+
+
+
+# BUSCO
+
+
+BUSCO names
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+#Genome-wide Annotateted BUSCO
+
+# SUBSET DATA TO EXTRACT THE LIST OF GEx CANDIDATE GENES TO HIGHLIGHT AND ANNOTATION
+names_busco_genes <- subset(MH_invi, candens != "0") %>% subset(busco =="1")
+
+ggplot(data = MH_invi, aes(x = BPcum, y = density*-1)) +
+  geom_jitter( aes(color=as.factor(facet2)), alpha=1, size=1.5) +
+  scale_colour_manual(values = rep(c("#dbeec8", "#58a7aa"), 22 )) +
+ # scale_colour_viridis_d(alpha = 0.7, direction = -1, option = "C") +
+  # CUSTOM X-AXIS BASED ON CHROMOSOME LENGTHS
+  scale_x_continuous( label = axisdf_invi$facet2, breaks= axisdf_invi$center) +
+  # ADD HIGHLIGHT COLOUR TO CANDIDATE GENES/SNPS
+  geom_jitter(data = cand.genes, color = "#78518d", fill = "#78518d", 
+              size=2, shape = 21, alpha = 0.7) +
+
+  # ADD SNP/GENE ANNOTATIONS TO CANDIDATES
+  geom_label_repel(data = names_busco_genes, aes(label = gene), size=2) +
+  
+  theme_bw() +
+  theme(legend.position="none", panel.border = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.ticks = element_line(colour = "black", size = 0.5),
+        axis.ticks.length = unit(0.2, "cm"))
+    
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+busco2 <-ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(busco)) + 
+  geom_jitter(aes(clr, ncd05, colour = busco, shape = candens), alpha = 0.6, size =5) +
+  scale_colour_viridis_d(option = "D", direction = 1) +
+  geom_curve(aes(x = 3, y = 0.451, xend = 30, yend = 0.495), curvature = 0.4) +
+  theme_minimal()
+#busco2
+
+```
+
+
+BUSCO genes in the top 20
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+#subset(bias_and_all, candens == "2") %>% subset(busco == "1")
+
+```
+
+
+
+Overrepresetnation?
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+busco_vio <- ggplot(bias_and_all, aes(x=busco, y=density, fill=busco)) +
+  geom_violin(trim = TRUE) + geom_boxplot(width=0.1, fill="white") +
+  labs(x = "Non BUSCO (7963) vs BUSCO 5661 genes", y = "CLR") + 
+  stat_compare_means(label.x = 1.3, label.y = 0.004)
+
+#busco_vio + theme_minimal() 
+ 
+```
+
+KS-test
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+  
+no_busco <- subset(bias_and_all, busco == "0")
+yes_busco <- subset(bias_and_all, busco == "1")
+
+ks.test(no_busco$clr, yes_busco$clr)
+
+```
+
+Fisher test
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+fisher_busco <- data.frame(
+ "NoBLS" = c(nrow(subset(bias_and_all, busco == "0") %>% subset(candens == "0")), 
+            nrow(subset(bias_and_all, busco == "1") %>% subset(candens == "0"))),
+ "BLS" = c(nrow(subset(bias_and_all, busco == "0") %>% subset(candens != "0")), 
+            nrow(subset(bias_and_all, busco == "1") %>% subset(candens != "0"))),
+  row.names = c("NoBUSCO", "BUSCO"),
+  stringsAsFactors = FALSE
+)
+
+fisher_busco
+
+fisher.test(fisher_busco)
+
+```
+
+
+Only candidates 
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+# busco_vio_sig <- ggplot(bias_and_all %>% subset(candens != "0"), 
+#                         aes(x=busco, y=density, fill=busco)) +
+#   geom_violin(trim = TRUE) + geom_boxplot(width=0.1, fill="white") +
+#   labs(x = "Non BUSCO (59) vs BUSCO 24 genes", y = "CLR") + 
+#   stat_compare_means(label.x = 1.32, label.y = 0.0001)
+# 
+#busco_vio_sig + theme_minimal() 
+#+ scale_fill_brewer(palette = "RdBu") + theme_minimal() 
+```
+
+KS-test only candidates
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+no_busco <- subset(bias_and_all, candens != "0") %>% subset(busco == "0")
+yes_busco <- subset(bias_and_all, candens != "0") %>%subset(busco == "1")
+
+ks.test(no_busco$clr, yes_busco$clr)
+
+```
+
+#### BUSCO genes under BLS (24)
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+#subset(bias_and_all, busco == "1") %>% subset(candens != "0")
+
+```
+
+# BUSCO Insecta
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+insecta_genes <- read.table('input/Insecta_LOC.txt', header = FALSE)
+
+bias_and_all$insecta <- bias_and_all$gene %in% insecta_genes$V1
+bias_and_all$insecta <- as.factor(bias_and_all$insecta*1)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_insecta1 <-ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(insecta)) + 
+  geom_jitter(aes(clr, ncd05, colour = insecta, shape = candens), alpha = 0.6, size =5) +
+  scale_colour_viridis_d(option = "D", direction = 1) +
+  geom_curve(aes(x = 3, y = 0.451, xend = 30, yend = 0.495), curvature = 0.4) +
+  theme_minimal()
+
+#plot_insecta1
+
+```
+
+Fisher test insecta
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+fisher_insecta <- data.frame(
+ "NoBLS" = c(nrow(subset(bias_and_all, insecta == "0") %>% subset(candens == "0")), 
+            nrow(subset(bias_and_all, insecta == "1") %>% subset(candens == "0"))),
+ "BLS" = c(nrow(subset(bias_and_all, insecta == "0") %>% subset(candens != "0")), 
+            nrow(subset(bias_and_all, insecta == "1") %>% subset(candens != "0"))),
+  row.names = c("NoBUSCO", "BUSCO"),
+  stringsAsFactors = FALSE
+)
+
+fisher_insecta
+
+fisher.test(fisher_insecta)
+
+```
+
+KS-test
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+  
+no_busco <- subset(bias_and_all, insecta == "0")
+yes_busco <- subset(bias_and_all, insecta == "1")
+
+ks.test(no_busco$clr, yes_busco$clr)
+
+```
+
+
+
+# BUSCO Diptera
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+diptera_genes <- read.table('input/Diptera_LOC.txt', header = FALSE)
+
+bias_and_all$diptera <- bias_and_all$gene %in% diptera_genes$V1
+bias_and_all$diptera <- as.factor(bias_and_all$diptera*1)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+plot_insecta1 <-ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(diptera)) + 
+  geom_jitter(aes(clr, ncd05, colour = diptera, shape = candens), alpha = 0.6, size =5) +
+  scale_colour_viridis_d(option = "D", direction = 1) +
+  geom_curve(aes(x = 3, y = 0.451, xend = 30, yend = 0.495), curvature = 0.4) +
+  theme_minimal()
+
+#plot_insecta1
+
+```
+
+Fisher test 
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+fisher_insecta <- data.frame(
+ "NoBLS" = c(nrow(subset(bias_and_all, insecta == "0") %>% subset(candens == "0")), 
+            nrow(subset(bias_and_all, insecta == "1") %>% subset(candens == "0"))),
+ "BLS" = c(nrow(subset(bias_and_all, insecta == "0") %>% subset(candens != "0")), 
+            nrow(subset(bias_and_all, insecta == "1") %>% subset(candens != "0"))),
+  row.names = c("NoBUSCO", "BUSCO"),
+  stringsAsFactors = FALSE
+)
+
+fisher_insecta
+
+#fisher.test(fisher_insecta)
+
+```
+
+KS-test
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+  
+no_busco <- subset(bias_and_all, insecta == "0")
+yes_busco <- subset(bias_and_all, insecta == "1")
+
+#ks.test(no_busco$clr, yes_busco$clr)
+
+```
+
+Venn diagram
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+hymeno_venn <- subset(bias_and_all, busco == "1")
+insect_venn <- subset(bias_and_all, insecta == "1")
+diptera_venn <- subset(bias_and_all, diptera == "1")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(hymeno_venn$gene, insect_venn$gene, diptera_venn$gene),
+  category = c("Hymenoptera", "Insecta", "Diptera"),
+  fill = c("#2A8DA1", "#C0D9AE", "#B7BAB2"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BUSCO"
+)
+
+#grid::grid.draw(venn_p1)
+```
+
+
+
+
+
+
+
+
+
+
+# Genes under balancing selection in Drosophila 
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+drosophila_genes <- read.table('tmp/inv_homologs_dm_bls.txt', header = FALSE)
+
+bias_and_all$drosophila <- bias_and_all$gene %in% drosophila_genes$V1
+bias_and_all$drosophila <- as.factor(bias_and_all$drosophila*1)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(drosophila)) + 
+  geom_jitter(aes(clr, 1-ncd05, colour = drosophila, shape = candens), 
+              alpha = 0.6, size =8) +
+  scale_colour_viridis_d(option = "E", direction = -1, name = "BLS D. mel", 
+                         labels = c("No", "Yes")) +
+ # geom_curve(aes(x = 3, y = 0.451, xend = 30, yend = 0.495), curvature = 0.4) +
+  labs(shape = "BLS S. inv") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(16, 17), labels = c("Non-BLS", "BLS")) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text = element_text(size = 20),
+        legend.position = "top")
+
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+nrow(subset(bias_and_all, drosophila == "1"))
+
+```
+
+# Supergene genes
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+super_plot1 <-ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(super)) + 
+  geom_jitter(aes(clr, ncd05, colour = super, shape = candens), alpha = 0.6, size =5) +
+  scale_colour_viridis_d(option = "E", direction = 1) +
+  geom_curve(aes(x = 3, y = 0.451, xend = 30, yend = 0.495), curvature = 0.4) +
+  theme_minimal()
+
+super_plot1
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+candidate_super <- subset(bias_and_all, super == "1") %>% subset(candens != "0")
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(super), 
+       aes(clr, ncd05, shape = candens, colour = super )) + 
+  geom_jitter(alpha = 0.6, size =5) + 
+  geom_label_repel(data = candidate_super, aes(label = gene), colour = "black",
+                   size=4, nudge_x = 12, nudge_y = -0.001) +
+  scale_colour_viridis_d(option = "E", direction = 1, labels = c("No","Yes")) +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(19, 15, 17), labels = c("No BLS", "Top 60", "Top 20")) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+nrow(subset(bias_and_all, super == "1") %>% subset(candens != "0"))
+
+subset(bias_and_all, super == "1") %>% subset(candens != "0")
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+chr_box <- ggplot(bias_and_all, aes(x=super, y=clr, fill=super)) +
+  geom_violin(trim = TRUE) + geom_boxplot(width=0.1, fill="white") +
+  labs(x = "Non Supergene (13190) vs Supergene 434 genes", y = "CLR") + 
+  stat_compare_means(label.x = 1.3, label.y = 3.5)
+
+chr_box + theme_minimal() 
+#+ scale_fill_brewer(palette = "RdBu") + theme_minimal() 
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+  
+no_super <- subset(bias_and_all, super == "0")
+yes_super <- subset(bias_and_all, super == "1")
+
+#ks.test(no_super$clr, yes_super$clr)
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+fisher_super <- data.frame(
+ "NoBLS" = c(nrow(subset(bias_and_all, super == "0") %>% subset(candens == "0")), 
+            nrow(subset(bias_and_all, super == "1") %>% subset(candens == "0"))),
+ "BLS" = c(nrow(subset(bias_and_all, super == "0") %>% subset(candens != "0")), 
+            nrow(subset(bias_and_all, super == "1") %>% subset(candens != "0"))),
+  row.names = c("NoSuper", "Super"),
+  stringsAsFactors = FALSE
+)
+
+fisher_super
+
+fisher.test(fisher_super)
+
+```
+
+
+
+# Immune
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# candidate_imm <- subset(bias_and_all, immune == "1") %>% subset(candens != "0")
+# 
+# ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(immune)) + 
+#   geom_jitter(aes(clr, ncd05, colour = immune, shape = candens), alpha = 0.6, size =5) +
+#   scale_colour_viridis_d(option = "C", direction = 1) +
+#   geom_curve(aes(x = 3, y = 0.451, xend = 30, yend = 0.495), curvature = 0.4) +
+#   theme_minimal()
+# 
+# 
+# ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% arrange(immune), 
+#        aes(clr, ncd05, shape = candens, colour = immune )) + 
+#   geom_jitter(alpha = 0.6, size =5) + 
+#   geom_label_repel(data = candidate_imm, aes(label = gene), colour = "black",
+#                    size=2, nudge_x = 10, nudge_y = -0.001) +
+#   scale_colour_viridis_d(option = "E", direction = 1, labels = c("No","Yes")) +
+#   labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+#   scale_shape_manual(values = c(20,18), labels = c("No-BLS", "BLS")) +
+#   theme_minimal()
+
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+chr_box <- ggplot(bias_and_all, aes(x=immune, y=clr, fill=immune)) +
+  geom_violin(trim = TRUE) + geom_boxplot(width=0.1, fill="white") +
+ # labs(x = "Non Supergene (13190) vs Supergene 434 genes", y = "CLR") + 
+  stat_compare_means(label.x = 1.3, label.y = 3.5)
+
+chr_box + theme_minimal() 
+#+ scale_fill_brewer(palette = "RdBu") + theme_minimal() 
+```
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+fisher_immune <- data.frame(
+ "No-BLS" = c(nrow(subset(bias_and_all, immune == "0") %>% subset(candens == "0")), 
+            nrow(subset(bias_and_all, immune == "1") %>% subset(candens == "0"))),
+ "BLS" = c(nrow(subset(bias_and_all, immune == "0") %>% subset(candens != "0")), 
+            nrow(subset(bias_and_all, immune == "1") %>% subset(candens != "0"))),
+  row.names = c("No-Immune", "Immune"),
+  stringsAsFactors = FALSE
+)
+
+fisher_immune
+
+fisher.test(fisher_immune)
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+  
+no_immune <- subset(bias_and_all, immune == "0")
+yes_immune <- subset(bias_and_all, immune == "1")
+
+ks.test(no_immune$density, yes_immune$density)
+
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+#Perform the Wilcoxon rank-sum test
+result <- wilcox.test(yes_immune$density, no_immune$density, alternative = "greater")
+result
+
+result <- wilcox.test(no_immune$density, yes_immune$density, alternative = "greater")
+result
+
+#print(result$p.value)
+
+result <- wilcox.test(yes_immune$density, no_immune$density, alternative = "two.sided")
+result
+
+```
+
+-------------
+
+### Per chromosome 
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(ggplot2)
+
+# Vector of values for modification
+my_chrs <- c("01", "02", "03","04", "05", "06", "07", "08",
+               "09", "10", "11", "12", "13", "14", "15", "16")
+
+# List to store the plots
+plot_list <- list()
+
+# For loop to create the plots
+for (i in 1:length(my_chrs)) {
+  plot <- ggplot(data = MH_invi %>% subset(facet2 == my_chrs[i]), 
+                 aes(x = BPcum, y = density*-1)) +
+  geom_jitter( aes(color=as.factor(facet2)), alpha=1, size=1.5) +
+  scale_colour_manual(values = rep(c("#dbeec8", "#58a7aa"), 22 )) +
+  scale_x_continuous( label = axisdf_invi$facet2, breaks= axisdf_invi$center ) +
+  geom_jitter(data = cand.genes %>% subset(facet2 == my_chrs[i]), 
+              color = "#78518d",fill = "#78518d", size=3, shape = 21, 
+              alpha = 0.7) +
+  geom_label_repel(data = cand.genes %>% subset(facet2 == my_chrs[i]), 
+                   aes(label = gene), nudge_x = 0.1, nudge_y = -0.001) +
+  theme_bw() + labs(x = "Chromosome", y = "Balancing Selection", 
+                    subtitle = paste("Chr", i))+
+  theme(legend.position="none", panel.border = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.ticks = element_line(colour = "black", size = 0.5),
+        axis.ticks.length = unit(0.2, "cm"))
+  
+  plot_list[[i]] <- plot
+}
+
+# Print the plots
+for (i in 1:length(plot_list)) {
+  print(plot_list[[i]])
+}
+
+```
+
+```{bash echo=FALSE}
+rm -rf Venn*log
+
+```
+

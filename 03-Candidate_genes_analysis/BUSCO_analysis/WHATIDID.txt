@@ -1,0 +1,83 @@
+ln -s /data/home/btx422/hive/flopezosorio/2021_popgen_invicta_richteri/results/01_map_annotations/2021-10-28-liftoff_ncbi_annotations/qmul_sinvicta_genomic.liftoff.tidy.longest_isoform.gff .
+
+cp /data/home/btx422/hive/flopezosorio/2021_popgen_invicta_richteri/results/01_map_annotations/2021-10-28-liftoff_ncbi_annotations/qmul_sinvicta_protein_liftoff_longest_isoform_busco/run_hymenoptera_odb10/full_table.tsv .
+
+###This doesnt work!!!!!!!!!!!!!!! grep "Complete" full_table.tsv | cut -f 3 | sort -u > complete_XM-ids.txt
+grep -f complete_XM-ids.txt qmul_sinvicta_genomic.liftoff.tidy.longest_isoform.gff > busco_complete5710.gff
+
+####General way of getting LOCs fro gff files###
+grep -Po "gene=\K.*?;" busco_complete5710.gff | sed 's/;//g' | uniq > tmp/list_uniquei_ids.txt
+grep -f tmp/list_unique_ids.txt busco_complete5710.gff | awk '{print $(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF}' > tmp/out.txt
+grep -Po "gene=\K.*?;" busco_complete5710.gff | sed 's/;//g' > tmp/list_ids.txt
+paste tmp/list_ids.txt tmp/out.txt > tmp/combine.txt
+cut -f 1 tmp/combine.txt | sort -u > results/busco_genes_LOC.txt
+###----###
+
+mkdir results
+cut -f 1 tmp/combine.txt | sort -u > results/busco_genes_LOC.txt
+cp results/busco_genes_LOC.txt ~/2023-03-17-Caste_expression/input/.
+
+#############
+Run BUSCO for insecta and maybe others.
+
+cp /data/home/btx645/archive_hive/flopezosorio/2021_popgen_invicta_richteri/results/04_compare_genomes/2022-01-26-busco_genes/fasta/GCA_018691235.1_QMUL_Sinv_Sequel2_genomic.fna .
+
+busco -i input/GCA_018691235.1_QMUL_Sinv_Sequel2_genomic.fna -c 10 -o busco_insecta_tmp --mode genome --lineage_dataset insecta_odb10 -f
+
+#Take the full_table.tsv from the BUSCO results to make a bed file
+cut -f 3,4,5 busco_insecta_tmp/run_insecta_odb10/full_table.tsv | grep "^CM" | sed 's/\s/\t/' > tmp/insecta_full.bed
+
+
+#Filter gff using the coordinates from the bed file
+bedtools intersect -a tmp/insecta_full.bed -b qmul_sinvicta_genomic.liftoff.tidy.longest_isoform.gff -wo > tmp/insecta_full.gff
+
+#Use the sequence of greps above to get the corresponding genes
+
+
+##
+grep "Complete" busco_diptera_tmp/run_diptera_odb10/full_table.tsv | cut -f 3,4,5 | grep "^CM" | sed 's/\s/\t/' > tmp/diptera_full.bed
+bedtools intersect -a tmp/diptera_full.bed -b qmul_sinvicta_genomic.liftoff.tidy.longest_isoform.gff -wo > tmp/diptera_full.gff
+grep -Po "gene=\K.*?;" tmp/diptera_full.gff | sed 's/;//g' | uniq > tmp/list_uniquei_ids_dip.txt
+grep -f tmp/list_uniquei_ids_dip.txt tmp/diptera_full.gff | awk '{print $(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF}' > tmp/out_dip.txt
+grep -Po "gene=\K.*?;" tmp/diptera_full.gff | sed 's/;//g' > tmp/list_ids_dip.txt
+paste tmp/list_ids_dip.txt tmp/out_dip.txt > tmp/combine_dip.txt
+cut -f 1 tmp/combine_dip.txt | sort -u > results/Diptera_LOC.txt
+
+###
+grep "Complete" busco_insecta_tmp/run_insecta_odb10/full_table.tsv  |cut -f 3,4,5 | grep "^CM" | sed 's/\s/\t/' > tmp/insecta_full.bed
+bedtools intersect -a tmp/insecta_full.bed -b qmul_sinvicta_genomic.liftoff.tidy.longest_isoform.gff -wo > tmp/insecta_full.gff
+grep -Po "gene=\K.*?;" tmp/insecta_full.gff | sed 's/;//g' | uniq > tmp/list_unique_ids_insecta.txt
+grep -f tmp/list_unique_ids_insecta.txt tmp/insecta_full.gff | awk '{print $(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF}' > tmp/out_insecta.txt
+grep -Po "gene=\K.*?;" tmp/insecta_full.gff | sed 's/;//g' > tmp/list_ids_insecta.txt
+paste tmp/list_ids_insecta.txt tmp/out_insecta.txt > tmp/combine_insect.txt
+cut -f 1 tmp/combine_insect.txt | sort -u > results/Insecta_LOC.txt
+
+BUSCO should be run with protein seqs rather than genome to make it more accurate.
+
+###Also the genes that are in Diptera and Hymoneptera cou
+#I'll get the aa sequences f
+
+
+busco -i input/qmul_sinvicta_protein.liftoff.longest_isoform.faa -c 10 -o 02_busco_diptera_tmp --mode protein --lineage_dataset diptera_odb10 -f
+busco -i input/qmul_sinvicta_protein.liftoff.longest_isoform.faa -c 10 -o 02_busco_insecta_tmp --mode protein --lineage_dataset insecta_odb10 -f
+busco -i input/qmul_sinvicta_protein.liftoff.longest_isoform.faa -c 10 -o 02_busco_hymenoptera_tmp --mode protein --lineage_dataset hymenoptera_odb10 -f
+
+
+
+## Runnig hymenoptera dataset in the genome of solitary hymenopteras
+Osmia bicornis
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/907/164/935/GCF_907164935.1_iOsmBic2.1/
+
+## Blast the results to get the equivalent invicta genes.
+
+module load blast+/
+makeblastdb -in input/qmul_sinvicta_protein.liftoff.longest_isoform.faa -dbtype "prot" -out blast_tmp/invicta_blast_ref
+
+blastp -db blast_tmp/invicta_blast_ref -max_target_seqs 1 -max_hsps 1 -query blast_tmp/complete_all_osmia.faa -outfmt 6 > blast_tmp/osmia_blasted_invicta.tsv
+
+
+cut -f 2 blast_tmp/osmia_blasted_invicta.tsv | sort -u > blast_tmp/out_XM_inv.txt
+./from_BUSCO_out_to_LOC.sh
+cp results/proteins_Osmia_LOC.txt ~/gitstuff/2022-Ballermix/2023-03-27-General_summary/BUSCO_analysis/.
+
+

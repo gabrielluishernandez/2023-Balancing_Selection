@@ -1,0 +1,498 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+#load("~/apocrita/2023-03-17-Caste_expression/common_tissues_caste_degs.RData")
+
+bias_and_all <- read.table('results/2023_04_17_Dens_canditates.txt',
+                             header = TRUE) 
+bias_and_all <- subset(bias_and_all, chr != "CM031916.1")
+bias_and_all$immune <- as.factor(as.numeric(bias_and_all$immune))
+bias_and_all$candens <- as.factor(as.numeric(bias_and_all$candens))
+
+hyme_genes <- read.table('input/proteins_Hymenoptera_LOC.txt', header = FALSE)
+bias_and_all$hymenop <- bias_and_all$gene %in% hyme_genes$V1
+bias_and_all$hymenop <- as.factor(bias_and_all$hymenop*1)
+
+supergene_genes <- read.table('input/supergenes_LOC.txt', header = FALSE)
+bias_and_all$super <- bias_and_all$gene %in% supergene_genes$V1
+bias_and_all$super <- as.factor(bias_and_all$super*1) 
+
+ase_genes <- read.table('input/consistent_AS_genes.txt', header = FALSE)
+bias_and_all$ASE <- bias_and_all$gene %in% ase_genes$V1
+bias_and_all$ASE <- as.factor(bias_and_all$ASE*1)
+
+ors_genes <- read.table('input/LOCs_for_ORs.txt', header = FALSE)
+bias_and_all$ors <- bias_and_all$gene %in% ors_genes$V1
+bias_and_all$ors <- as.factor(bias_and_all$ors*1)
+
+drosophila_genes <- read.table('tmp/inv_homologs_dm_bls.txt', header = FALSE)
+bias_and_all$drosophila <- bias_and_all$gene %in% drosophila_genes$V1
+bias_and_all$drosophila <- as.factor(bias_and_all$drosophila*1)
+
+##
+pop1_genes <- read.table('input/2023-08-04-POP-1-Candidate_Genes_top1pc.txt', header = FALSE)
+bias_and_all$pop1 <- bias_and_all$gene %in% pop1_genes$V1
+bias_and_all$pop1 <- as.factor(bias_and_all$pop1*1)
+
+pop2_genes <- read.table('input/2023-08-04-POP2_Candidate_Genes.txt', header = FALSE)
+bias_and_all$pop2 <- bias_and_all$gene %in% pop2_genes$V1
+bias_and_all$pop2 <- as.factor(bias_and_all$pop2*1)
+
+pop3_genes <- read.table('input/2023-08-04-POP-3_Candidate_Genes.txt', header = FALSE)
+bias_and_all$pop3 <- bias_and_all$gene %in% pop3_genes$V1
+bias_and_all$pop3 <- as.factor(bias_and_all$pop3*1)
+
+pop4_genes <- read.table('input/2023-08-04-POP4_Candidate_Genes.txt', header = FALSE)
+bias_and_all$pop4 <- bias_and_all$gene %in% pop4_genes$V1
+bias_and_all$pop4 <- as.factor(bias_and_all$pop4*1)
+
+
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+candidate_immune <- subset(bias_and_all, immune == "1" & candens != "0")
+candidate_busco <- subset(bias_and_all, hymenop == "1" & candens != "0")
+candidate_super <- subset(bias_and_all, super == "1" & candens != "0")
+candidate_ASE <- subset(bias_and_all, ASE == "1" & candens != "0")
+candidate_ORs <- subset(bias_and_all, ors == "1" & candens != "0")
+candidate_dros <- subset(bias_and_all, drosophila == "1" & candens != "0")
+
+BLS_candidates <- subset(bias_and_all, candens != "0")
+
+pop1_genes <- subset(bias_and_all, pop1 == "1")
+pop2_genes <- subset(bias_and_all, pop2 == "1")
+pop3_genes <- subset(bias_and_all, pop3 == "1")
+pop4_genes <- subset(bias_and_all, pop4 == "1")
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#top20
+bias_and_all <- arrange(bias_and_all, density)
+top20 <- head(bias_and_all, 20)
+```
+
+# All pops and samples 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop1_genes$gene, pop2_genes$gene, pop3_genes$gene, 
+           pop4_genes$gene, BLS_candidates$gene),
+  category = c("Pop1","Pop2", "Pop3", 
+               "Pop4", "All-samples"),
+  fill = c("#2A8DA1", "#C0D9AE", 
+           "#B7BAB2", "#B45639", "#C0D9AE"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+# pop2
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(BLS_candidates$gene, pop2_genes$gene),
+  category = c("All", "Pop2"),
+  fill = c("#B45639", "#2A8DA1"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(BLS_candidates$gene, pop3_genes$gene),
+  category = c("All", "Pop3"),
+  fill = c("#B45639", "#B7BAB2"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(BLS_candidates$gene, pop4_genes$gene),
+  category = c("All", "Pop4"),
+  fill = c("#B45639", "#2A8DA1"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+intersect(intersect(intersect(pop2_genes$gene, pop3_genes$gene), 
+                    pop4_genes$gene), BLS_candidates$gene)
+
+```
+## Top 5% of population loci
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##
+pop1_genes <- read.table('input/2023-08-04-POP-1-Candidate_Genes_top5pc.txt', 
+                         header = FALSE)
+bias_and_all$pop1 <- bias_and_all$gene %in% pop1_genes$V1
+bias_and_all$pop1 <- as.factor(bias_and_all$pop1*1)
+
+pop2_genes <- read.table('input/2023-08-04-POP2_Candidate_Genes_5pc.txt', 
+                         header = FALSE)
+bias_and_all$pop2 <- bias_and_all$gene %in% pop2_genes$V1
+bias_and_all$pop2 <- as.factor(bias_and_all$pop2*1)
+
+pop3_genes <- read.table('input/2023-08-04-POP-3_Candidate_Genes_top5pc.txt', 
+                         header = FALSE)
+bias_and_all$pop3 <- bias_and_all$gene %in% pop3_genes$V1
+bias_and_all$pop3 <- as.factor(bias_and_all$pop3*1)
+
+pop4_genes <- read.table('input/2023-08-04-POP4_Candidate_Genes_top5pc.txt',
+                         header = FALSE)
+bias_and_all$pop4 <- bias_and_all$gene %in% pop4_genes$V1
+bias_and_all$pop4 <- as.factor(bias_and_all$pop4*1)
+
+pop1_genes <- subset(bias_and_all, pop1 == "1")
+pop2_genes <- subset(bias_and_all, pop2 == "1")
+pop3_genes <- subset(bias_and_all, pop3 == "1")
+pop4_genes <- subset(bias_and_all, pop4 == "1")
+
+```
+
+pop1-pop2
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop1_genes$gene, pop2_genes$gene),
+  category = c("Pop1","Pop2"),
+  fill = c("#187E93", "#80ab61"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+pop1-pop4
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop1_genes$gene, pop4_genes$gene),
+  category = c("Pop1", "Pop4"),
+  fill = c("#187E93", "#D7C16A"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+pop2-pop3
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop2_genes$gene, pop3_genes$gene),
+  category = c("Pop2", "Pop3"),
+  fill = c("#80ab61", "#C0D9AE"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+pop2-pop4
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop2_genes$gene, pop4_genes$gene),
+  category = c("Pop2", "Pop4"),
+  fill = c("#80ab61", "#D7C16A"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+pop3-pop4
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop3_genes$gene, pop4_genes$gene),
+  category = c("Pop3", "Pop4"),
+  fill = c("#C0D9AE", "#D7C16A"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+# Only 4 populations
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Colours:
+# All samples #7d55a8
+# 1 #187e93
+# 2 #4d9817
+# 3 #ade187
+# 4 #f1ec09
+
+
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop1_genes$gene, 
+           pop2_genes$gene, 
+           pop3_genes$gene, 
+           pop4_genes$gene),
+  category = c("Pop 1",
+               "Pop 2", 
+               "Pop 3", 
+               "Pop 4"),
+  fill = c("#7d55a8",
+           "#4d9817",
+           "#ade187", 
+           "#f1ec09"),
+  height = 1000, 
+  width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pop_genes_intersect_2 <- intersect(
+  intersect(intersect
+            (pop1_genes$gene, pop2_genes$gene),
+            pop3_genes$gene),
+  pop4_genes$gene
+  )
+
+
+pop_genes_intersect_2
+subset(bias_and_all, gene == pop_genes_intersect_2)
+
+```
+
+# pop1 pop3
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(pop1_genes$gene, pop3_genes$gene),
+  category = c("Pop1","Pop3"),
+  fill = c("#187E93", "#C0D9AE"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+
+# All
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+#Colours:
+# All samples #7d55a8
+# 1 #187e93
+# 2 #4d9817
+# 3 #ade187
+# 4 #f1ec09
+
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(BLS_candidates$gene, pop1_genes$gene, pop2_genes$gene, 
+           pop3_genes$gene,pop4_genes$gene),
+  category = c("All samples","Pop 1", "Pop 2", "Pop 3", "Pop 4"),
+  fill = c("#7d55a8", "#187e93", "#4d9817", "#ade187", "#f1ec09" ),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pop_genes_intersect <- intersect(
+  intersect(
+    intersect(
+      intersect(
+        BLS_candidates$gene, pop1_genes$gene),
+      pop2_genes$gene),
+    pop3_genes$gene),
+  pop4_genes$gene
+  )
+
+subset(bias_and_all, gene == pop_genes_intersect)
+
+```
+
+
+
+
+
+
+
+
+
+--------------------------
+  
+3 Immune genes. 1 of them is in the supergene. 1 is a BUSCO and 1 is private. |
+4 Supergene genes. 3 are BUSCO. 1 is immune. |
+3 ASE. 2 are BUSCO. 1 is private. |
+2 ORs. both private |
+
+## ORS
+
+### All ORs with the differen categories
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+candidate_immune <- subset(bias_and_all, ors == "1" & immune == "1")
+candidate_busco <- subset(bias_and_all, ors == "1" & hymenop == "1")
+candidate_super <- subset(bias_and_all, ors == "1" & super == "1")
+candidate_ASE <- subset(bias_and_all, ors == "1"& ASE == "1")
+candidate_ORs <- subset(bias_and_all, ors == "1") 
+candidate_dros <- subset(bias_and_all, ors == "1"& candens != "0")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(candidate_immune$gene, candidate_busco$gene, candidate_super$gene, 
+           candidate_ASE$gene, candidate_ORs$gene),
+  category = c("Immune", "BUSCO", "Super", "ASE", "OR"),
+  fill = c("#2A8DA1", "#C0D9AE", "#B7BAB2", "#C0D9AE", "#C0D9AE"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "BLS"
+)
+
+grid::grid.draw(venn_p1)
+```
+
+
+### All ORs with the differen categories. Includind the BLS candidate ORs
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+candidate_immune <- subset(bias_and_all, ors == "1"& immune == "1")
+candidate_busco <- subset(bias_and_all, ors == "1" & hymenop == "1")
+candidate_super <- subset(bias_and_all, ors == "1" & super == "1")
+candidate_bls_ors <- subset(bias_and_all, ors == "1" & candens != "0")
+candidate_ORs <- subset(bias_and_all, ors == "1") 
+
+candidate_bls_ors
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(candidate_immune$gene, candidate_busco$gene, candidate_super$gene, 
+           candidate_bls_ors$gene, candidate_ORs$gene),
+  category = c("Immune", "BUSCO", "Super", "BLS_OR", "OR"),
+  fill = c("#2A8DA1", "#C0D9AE", "#B7BAB2", "#C0D9AE", "#B45639"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "Only ORs"
+)
+
+grid::grid.draw(venn_p1)
+
+
+```
+
+
+### All ORs with the differen categories. Includind the BLS candidate ORs
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+candidate_immune <- subset(bias_and_all, ors == "1" & immune == "1")
+candidate_busco <- subset(bias_and_all, ors == "1" & hymenop == "1")
+candidate_super <- subset(bias_and_all, ors == "1" & super == "1")
+candidate_bls_ors <- subset(bias_and_all, ors == "1" & candens != "0")
+candidate_ASE <- subset(bias_and_all, ors == "1" & ASE == "1")
+candidate_ORs <- subset(bias_and_all, ors == "1") 
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a Venn diagram 
+library(VennDiagram)
+venn_p1 <- venn.diagram(
+  x = list(candidate_ASE$gene, candidate_busco$gene, candidate_super$gene, 
+           candidate_bls_ors$gene, candidate_ORs$gene),
+  category = c("ASE", "BUSCO", "Super", "BLS_OR", "OR"),
+  fill = c("#2A8DA1", "#C0D9AE", "#B7BAB2", "#C0D9AE", "#B45639"),
+  height = 1000, width = 1000,
+  filename = NULL,
+  main = "Only ORs"
+)
+
+grid::grid.draw(venn_p1)
+
+```
+
+
+```{bash echo=FALSE}
+rm -rf Venn*log
+
+```

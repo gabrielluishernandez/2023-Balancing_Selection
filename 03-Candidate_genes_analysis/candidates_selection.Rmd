@@ -1,0 +1,474 @@
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(gridExtra)
+library(ggsignif)
+library(ggpointdensity)
+library(ggpubr)
+library(ggrepel)
+library(MASS)
+
+```
+
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+
+bias_and_all <- read.table('input/2022-09-21-Master_info_Genes.txt',
+                             header = TRUE) 
+bias_and_all$immune <- as.factor(as.numeric(bias_and_all$immune))
+
+bias_and_all <- subset(bias_and_all, chr != "CM031916.1")
+```
+
+# 1. Plots with geom_pointdensity()
+
+## This is the raw data.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dens_clr_ncd_1 <- ggplot(bias_and_all , 
+                         mapping = aes(x = clr, y = ncd05)) +
+  geom_pointdensity(size = 3, shape = 18) + scale_colour_viridis_c( option = "C") + 
+  theme_minimal()
+  
+#dens_clr_ncd_1
+
+dens_clr_ncd_2 <- ggplot(data = bias_and_all, aes(x=clr, y=ncd05)) + 
+  stat_density_2d(aes(fill = ..level..), geom = "polygon", colour="white", bins = 20) + 
+  theme_minimal()
+
+#grid.arrange(dens_clr_ncd_1, dens_clr_ncd_2)
+```
+
+### Now I will scale them with the SD.
+#### The SD should be calculated without the outliers
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Filter the main data frame
+
+no_outliers <- subset(bias_and_all, clr < 30)
+no_outliers <- subset(no_outliers, ncd05 > 0.2)
+
+#Calculate SD
+
+sd_clr_no_outlier <- sd(no_outliers$clr)
+sd_ncd_no_outlier <- sd(no_outliers$ncd05)
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dens_clr_ncd_5 <- ggplot(no_outliers, mapping = aes(x = clr, y = ncd05)) +
+  geom_pointdensity(size = 3, shape = 18) + scale_colour_viridis_c( option = "C") + 
+  theme_minimal()
+  
+#dens_clr_ncd_2
+```
+
+
+### Point-density plot scaled by the not-outliers SD 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dens_clr_ncd_3 <- ggplot(bias_and_all, mapping = aes(x = clr/sd_clr_no_outlier,
+                                                     y = ncd05/sd_ncd_no_outlier)) +
+  geom_pointdensity(size = 3, shape = 18) + 
+  scale_colour_viridis_c( option = "C") + 
+  theme_minimal()
+  
+#dens_clr_ncd_3
+
+dens_clr_ncd_4 <- ggplot(data = bias_and_all, aes(x=clr/sd_clr_no_outlier,
+                                                  y=ncd05/sd_ncd_no_outlier)) + 
+  stat_density_2d(aes(fill = ..level..), 
+                  geom = "polygon", colour="white", bins = 20) + 
+  theme_minimal()
+
+#grid.arrange(dens_clr_ncd_3, dens_clr_ncd_4)
+```
+
+### This is the two of them side by side
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#grid.arrange(dens_clr_ncd_1, dens_clr_ncd_2,dens_clr_ncd_3, dens_clr_ncd_4, ncol =2)
+
+```
+
+
+
+####
+### No outliers on y-axis. Bandwidth modified
+
+The way to control the colors in the geom_pointdensity() method
+is by modifying "adjust". The number of this option is multiplied by the default 
+bandwidth. I don't like the fact that I can not find which is the value for 
+their default bandwidth and I don't know how to access the calculated density values.
+https://www.rdocumentation.org/packages/ggpointdensity/versions/0.1.0
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dens1 <- ggplot(bias_and_all %>% subset(gene != "LOC105199771"), 
+                         mapping = aes(x = clr, y = ncd05)) +
+  geom_pointdensity(size = 3, shape = 18) + scale_colour_viridis_c( option = "C") + 
+  theme_minimal()
+  
+dens2 <- ggplot(data = bias_and_all %>% subset(gene != "LOC105199771")
+                         , aes(x=clr, y=ncd05)) + 
+  stat_density_2d(aes(fill = ..level..), geom = "polygon", colour="white", bins = 20) + 
+  theme_minimal()
+
+#grid.arrange(dens1, dens2)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+dens3 <- ggplot(bias_and_all %>% subset(gene != "LOC105199771"),
+                mapping = aes(x = clr/sd_clr_no_outlier,
+                              y = ncd05/sd_ncd_no_outlier)) +
+  geom_pointdensity(adjust = 100, size = 4, shape = 18) + 
+  scale_colour_viridis_c(option = "C") + 
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dens4 <- ggplot(data = bias_and_all %>% subset(gene != "LOC105199771"),
+                aes(x=clr/sd_clr_no_outlier,
+                    y=ncd05/sd_ncd_no_outlier)) + 
+  stat_density_2d(aes(fill = ..level..), 
+                  geom = "polygon", colour="white", bins = 20) + 
+  theme_minimal()
+
+#grid.arrange(dens3, dens4)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+grid.arrange(dens1, dens2, dens3, dens4, ncol =2)
+dens3
+
+```
+
+
+
+#####################
+
+# 2. Using MASS to calculate density
+I like the fact that it adds the density values to the data frame.
+https://slowkow.com/notes/ggplot2-color-by-density/
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(MASS)
+library(ggplot2)
+library(viridis)
+
+
+#> Loading required package: viridisLite
+theme_set(theme_bw(base_size = 16))
+
+# Get density of points in 2 dimensions.
+# @param x A numeric vector.
+# @param y A numeric vector.
+# @param n Create a square n by n grid to compute density.
+# @return The density within each square.
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+
+set.seed(1)
+
+```
+
+#### I am playing arround with the following values:
+
+"n" = Number of grid points in each direction. "I think 500 is good"
+
+"h" = Vector of bandwidths for x and y directions. 
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Option 1
+# bias_and_all$density <- get_density(bias_and_all$clr/sd_clr_no_outlier, 
+#                                     bias_and_all$ncd05/sd_ncd_no_outlier, 
+#                                     h = c(9, 9), n = 500)
+# 
+# ggplot(bias_and_all %>% subset(gene != "LOC105199771"))+
+#   geom_point(aes(clr, ncd05, color = density)) +
+#   scale_color_viridis() +
+#   theme_minimal()
+# 
+# nrow(subset(bias_and_all, density < 0.005))
+# nrow(subset(bias_and_all, density < 0.002))
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+### Option 2
+# bias_and_all$density <- get_density(bias_and_all$clr/sd_clr_no_outlier, 
+#                                     bias_and_all$ncd05/sd_ncd_no_outlier, 
+#                                     h = c(13, 13), n = 500)
+# 
+# ggplot(bias_and_all %>% subset(gene != "LOC105199771"))+
+#   geom_point(aes(clr, ncd05, color = density)) +
+#   scale_color_viridis() +
+#   theme_minimal()
+# 
+# nrow(subset(bias_and_all, density < 0.005))
+# nrow(subset(bias_and_all, density < 0.002))
+```
+
+
+I like this one
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+bias_and_all$density <- get_density(bias_and_all$clr/sd_clr_no_outlier, 
+                                    bias_and_all$ncd05/sd_ncd_no_outlier, 
+                                    h = c(17, 17), n = 500)
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771")) +
+  geom_point(aes(clr, ncd05, color = density), size = 4, shape = 18) +
+  scale_color_viridis() +
+  #geom_curve(aes(x = 3, y = 0.432, xend = 39, yend = 0.495), curvature = 0.4) +
+  #geom_curve(aes(x = 3, y = 0.451, xend = 25, yend = 0.495), curvature = 0.55) +
+  theme_minimal()
+
+#nrow(subset(bias_and_all, density < 0.00436))
+#nrow(subset(bias_and_all, density < 0.0015))
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# 
+# bias_and_all$density <- get_density(bias_and_all$clr/sd_clr_no_outlier, 
+#                                     bias_and_all$ncd05/sd_ncd_no_outlier, 
+#                                     h = c(15, 15), n = 500)
+# 
+# ggplot(bias_and_all %>% subset(gene != "LOC105199771"))+
+#   geom_point(aes(clr, ncd05, color = density)) +
+#   scale_color_viridis() +
+#   theme_minimal()
+# 
+# nrow(subset(bias_and_all, density < 0.0050))
+# nrow(subset(bias_and_all, density < 0.0025))
+
+```
+
+
+### Candidate genes
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#0.008347528
+#0.0041
+#numbers <- 1:100
+#quantile(bias_and_all$density, 0.01)
+#quantile(bias_and_all$density, 1)
+
+bias_and_all$candens <- "0"
+
+for(i in 1:nrow(bias_and_all)) {                     
+  if(is.na(bias_and_all$clr[i])){
+    next
+  }
+  if(bias_and_all$density[i] <= 0.004795945 ){
+    bias_and_all$candens[i]  <- "1"
+  }
+  # if(bias_and_all$density[i] <= 0.0015){
+  #   bias_and_all$candens[i]  <- "2"
+  # }
+  # if(bias_and_all$clr[i] >= 16.11603 & bias_and_all$ncd05[i] <= 0.4647506){
+  #   bias_and_all$candens[i]  <- "1"
+  # }
+}
+
+bias_and_all$candens <- as.factor(bias_and_all$candens)
+
+#Organize by clr
+bias_and_all <- bias_and_all[order(bias_and_all$density, decreasing = FALSE), ]
+
+#eliminate duplicates keeping the entry with the highest clr per gene.
+bias_and_all <- bias_and_all[!duplicated(bias_and_all$gene), ]
+
+```
+
+
+### Using density contours to select the candidates
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+bins550 <- ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>%
+                    arrange(desc(density)),
+             aes(clr/sd_clr_no_outlier, ncd05/sd_ncd_no_outlier)) + 
+  geom_point(aes(colour = density), alpha = 0.7, size = 5, shape =18) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  theme_minimal()
+
+bins550 + geom_density_2d(bins = 550, alpha = 0.3, color = "black") +
+  xlab("B0-MAF") + ylab("NCD1") + 
+  theme_minimal()
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#aes(clr/sd_clr_no_outlier, ncd05/sd_ncd_no_outlier))
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% 
+  arrange(desc(density)), aes(clr, 1-ncd05)) + 
+  geom_point(aes(colour = density, shape = candens), alpha = 0.7, size = 5) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  geom_density_2d(bins = 525, alpha = 0.3, color = "black") +
+  labs(shape = "Candidates") + xlab("Ballermix") + ylab("NCD1") + 
+  scale_shape_manual(values = c(20, 18),
+                     labels = c("No-BLS", "BLS")) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% 
+  arrange(desc(density)), aes(clr/sd_clr_no_outlier, ncd05/sd_ncd_no_outlier)) + 
+  geom_point(aes(colour = density, shape = candens), alpha = 0.7, size = 5) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  #geom_density_2d(bins = 525, alpha = 0.3, color = "black") +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(20, 18),
+                     labels = c("No-BLS", "BLS")) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(bias_and_all %>% subset(gene != "LOC105199771") %>% 
+  arrange(desc(density)), aes(clr, ncd05)) + 
+  geom_point(aes(colour = density, shape = candens), alpha = 0.7, size = 5) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  #geom_density_2d(bins = 525, alpha = 0.3, color = "black") +
+  labs(shape = "Candidates") + xlab("B0-MAF") + ylab("NCD1") + 
+  scale_shape_manual(values = c(20, 18),
+                     labels = c("No-BLS", "BLS")) +
+  theme_minimal()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+bins550 <- ggplot(bias_and_all %>% arrange(desc(density)),
+                  aes(clr/sd_clr_no_outlier, ncd05/sd_ncd_no_outlier)) + 
+  geom_point(aes(colour = density), alpha = 0.7, size =3) +
+  scale_colour_viridis_c(option = "D", direction = 1, name = "Density") +
+  theme_minimal()
+
+bins550 + geom_density_2d(bins = 550, alpha = 0.3, color = "black") +
+  xlab("B0-MAF") + ylab("NCD1") + 
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+my_genes <- ggplot(bias_and_all %>% subset(gene != "LOC105199771"),
+             aes(clr/sd_clr_no_outlier, ncd05/sd_ncd_no_outlier)) + 
+  geom_point(aes(colour = candens), alpha = 0.7, size = 5, shape = 18) +
+  scale_colour_viridis_d(option = "D", direction = -1, name = "Candidates") +
+  theme_minimal()
+
+my_genes + geom_density_2d(bins = 550, alpha = 0.3, color = "black") +
+  xlab("B0-MAF") + ylab("NCD1") + 
+  # geom_hline(yintercept = 68.6, linetype='dotted', size = 0.8) +
+  # geom_vline(xintercept = 3.6, linetype='dotted', size = 0.8, colour = "red") +
+  # geom_hline(yintercept = 68.15, linetype='dotted', size = 0.8, colour = "red") +
+  # geom_vline(xintercept = 4, linetype='dotted', size = 0.8) +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+my_genes <- ggplot(bias_and_all %>% arrange(desc(density)),
+             aes(clr/sd_clr_no_outlier, ncd05/sd_ncd_no_outlier)) + 
+  geom_point(aes(colour = candens), alpha = 0.7, size =5, shape = 18) +
+  scale_colour_viridis_d(option = "D", direction = -1, name = "Density") +
+  theme_minimal()
+
+my_genes + geom_density_2d(bins = 550, alpha = 0.3, color = "black") +
+  xlab("B0-MAF") + ylab("NCD1") + 
+  theme_minimal()
+
+
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+nrow(subset(bias_and_all, density < 0.004795945))
+nrow(subset(bias_and_all, density < 0.006951896))
+
+```
+
+### This was done to the the peaks with the previous table and should not be done again ###
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Get the SNPS for these 83 
+# Add 1Kb in each direction
+# Check if other genes are highlighted around these peaks in
+# ~/btx645/2022-06-27-combine_tables_clr_ncd/2022-09-02-Gene_identification
+
+#top_peaks <- subset(bias_and_all, density <= 0.0041) 
+
+#top_peaks$begin <- top_peaks$snp - 1000
+#top_peaks$end <- top_peaks$snp + 1000
+#top_peaks <- subset(top_peaks, select = c(chr, begin, end, clr, gene, 
+ #                                         snp, ncd05, ncd04, ncd03))%>% 
+  #arrange(chr)
+
+#write.table(top_peaks, "tmp/2023_06_14_Top_peaks.txt", quote = FALSE,
+         #   col.names = FALSE, row.names = FALSE, sep = "\t")
+
+##These are the extra ones that I got from the ana;ysis in 
+# ~/2022-06-27-combine_tables_clr_ncd/2022-09-02-Gene_identification
+# LOC120359458 LOC120359440
+# LOC105196627 LOC105196643
+# Trnap-agg LOC105204753
+# LOC105196752 LOC105196820
+# LOC105194434 LOC105194453
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+bias_and_all <- arrange(bias_and_all, density)
+
+### Complete table
+write.table(bias_and_all, 
+            "~/apocrita/gitstuff/2023-Balancing_Selection/02-Candidate_genes_selection/results/2023-Master_table.txt", 
+            quote = FALSE,
+            col.names = TRUE, 
+            row.names = FALSE)
+
+
+# Candidates only
+candidate_dens <- subset(bias_and_all, candens == "1")
+
+write.table(candidate_dens, 
+            "~/apocrita/gitstuff/2023-Balancing_Selection/02-Candidate_genes_selection/results/2023-Candidate_genes_only.txt", 
+            quote = FALSE,
+            col.names = TRUE, row.names = FALSE)
+
+```
